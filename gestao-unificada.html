@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hub OS — Sistema de Gestão</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        glass: 'rgba(15, 23, 42, 0.6)',
+                        glassBorder: 'rgba(255, 255, 255, 0.1)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Leaflet (Mapas) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .glass-card:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            transform: translateY(-2px);
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        .view { display: none !important; }
+        .view.active { display: flex !important; }
+        .tab-content { display: none !important; }
+        .tab-content.active { display: block !important; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.3s ease-out forwards; }
+
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .cal-dia {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .cal-dia:hover:not(:disabled) { background: rgba(99, 102, 241, 0.2); border-color: rgba(99, 102, 241, 0.4); }
+        .cal-dia.selecionado { background: #4f46e5; color: white; border-color: #6366f1; }
+        .cal-dia.hoje:not(.selecionado) { border-color: #4f46e5; color: #818cf8; }
+        .cal-dia:disabled { opacity: 0.3; cursor: not-allowed; }
+        .cal-dot {
+            position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+            width: 4px; height: 4px; border-radius: 50%; background: #f59e0b;
+        }
+
+        #mapa-atribuicao { border-radius: 0.75rem; z-index: 10; }
+        .leaflet-popup-content-wrapper { background: #1e293b; color: #f8fafc; border: 1px solid rgba(255,255,255,0.1); }
+        .leaflet-popup-tip { background: #1e293b; }
+
+        #signature-pad { touch-action: none; background: #cbd5e1; border-radius: 0.5rem; }
+
+        /* Loading overlay */
+        #loading-firebase {
+            position: fixed; inset: 0; z-index: 9999;
+            background: #020617;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+        }
+        #loading-firebase.hidden { display: none; }
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid rgba(99,102,241,0.2);
+            border-top-color: #6366f1; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Loading Firebase -->
+    <div id="loading-firebase">
+        <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <i class="fas fa-satellite-dish text-3xl text-white"></i>
+        </div>
+        <div class="spinner"></div>
+        <p class="text-slate-400 text-sm">Conectando ao Firebase...</p>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         TELA 1: LOGIN
+    ═══════════════════════════════════════════════════ -->
+    <div id="view-login" class="view active flex items-center justify-center min-h-screen p-4">
+        <div class="glass-panel p-8 rounded-2xl w-full max-w-md text-center animate-fade border-t border-t-indigo-500/30">
+            <div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mx-auto flex items-center justify-center mb-6 shadow-lg shadow-indigo-500/20">
+                <i class="fas fa-satellite-dish text-4xl text-white"></i>
+            </div>
+            <h1 class="text-3xl font-black tracking-tight mb-2">Hub OS</h1>
+            <p class="text-slate-400 text-sm mb-8">Sistema Unificado de Gestão de Campo</p>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <button onclick="loginGestor()" class="glass-card p-6 rounded-xl flex flex-col items-center gap-3">
+                    <div class="w-12 h-12 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center text-xl">
+                        <i class="fas fa-chess-king"></i>
+                    </div>
+                    <span class="font-bold">Gestor</span>
+                </button>
+                <button onclick="mostrarLoginTecnico()" class="glass-card p-6 rounded-xl flex flex-col items-center gap-3">
+                    <div class="w-12 h-12 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-xl">
+                        <i class="fas fa-hard-hat"></i>
+                    </div>
+                    <span class="font-bold">Técnico</span>
+                </button>
+            </div>
+
+            <div id="tech-login-select" class="hidden text-left bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Selecione seu perfil</p>
+                <div id="tech-list-login" class="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         TELA 2: GESTOR
+    ═══════════════════════════════════════════════════ -->
+    <div id="view-gestor" class="view min-h-screen flex flex-col">
+        <!-- Navbar -->
+        <nav class="glass-panel sticky top-0 z-40 border-b-0 border-b-indigo-500/20 shadow-lg shadow-black/20">
+            <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center"><i class="fas fa-satellite-dish"></i></div>
+                    <span class="font-bold text-lg hidden sm:block">Hub OS Admin</span>
+                </div>
+                <div class="flex items-center gap-4 text-sm">
+                    <div class="bg-amber-500/20 text-amber-400 px-3 py-1.5 rounded-full border border-amber-500/20 font-bold flex items-center gap-2">
+                        <i class="fas fa-clock"></i> <span id="badge-pendentes">0</span> pendentes
+                    </div>
+                    <button onclick="logout()" class="text-slate-400 hover:text-white transition"><i class="fas fa-sign-out-alt text-lg"></i></button>
+                </div>
+            </div>
+            <!-- Tabs -->
+            <div class="max-w-7xl mx-auto px-4 flex overflow-x-auto gap-1 border-t border-slate-700/50">
+                <button onclick="switchTab('tab-dashboard')" id="btn-tab-dashboard" class="px-4 py-3 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400 whitespace-nowrap"><i class="fas fa-chart-pie mr-2"></i>Dashboard</button>
+                <button onclick="switchTab('tab-os')" id="btn-tab-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-list-check mr-2"></i>Gestão de OS & Mapa</button>
+                <button onclick="switchTab('tab-tecnicos')" id="btn-tab-tecnicos" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-users mr-2"></i>Técnicos & Agenda</button>
+            </div>
+        </nav>
+
+        <main class="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6">
+
+            <!-- TAB: DASHBOARD & CADASTRO -->
+            <div id="tab-dashboard" class="tab-content active animate-fade">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="glass-card p-4 rounded-2xl">
+                        <div class="text-amber-400 mb-1"><i class="fas fa-inbox text-xl"></i></div>
+                        <div class="text-3xl font-black" id="stat-abertas">0</div>
+                        <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Abertas</div>
+                    </div>
+                    <div class="glass-card p-4 rounded-2xl">
+                        <div class="text-blue-400 mb-1"><i class="fas fa-route text-xl"></i></div>
+                        <div class="text-3xl font-black" id="stat-atribuidas">0</div>
+                        <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Atribuídas</div>
+                    </div>
+                    <div class="glass-card p-4 rounded-2xl">
+                        <div class="text-emerald-400 mb-1"><i class="fas fa-check-double text-xl"></i></div>
+                        <div class="text-3xl font-black" id="stat-concluidas">0</div>
+                        <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Concluídas</div>
+                    </div>
+                    <div class="glass-card p-4 rounded-2xl">
+                        <div class="text-purple-400 mb-1"><i class="fas fa-users text-xl"></i></div>
+                        <div class="text-3xl font-black" id="stat-tecnicos">0</div>
+                        <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Técnicos Ativos</div>
+                    </div>
+                </div>
+
+                <!-- Nova OS -->
+                <div class="glass-panel p-6 rounded-2xl border-l-4 border-l-emerald-500">
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-plus-circle text-emerald-500"></i> Cadastrar Nova OS</h2>
+                    <form id="form-nova-os" onsubmit="criarOS(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-xs font-bold text-slate-400 mb-1">Cliente *</label><input type="text" id="os-cliente" required class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 focus:border-emerald-500 outline-none"></div>
+                        <div><label class="block text-xs font-bold text-slate-400 mb-1">Endereço (Ponto) *</label><input type="text" id="os-ponto" required class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 focus:border-emerald-500 outline-none"></div>
+                        <div><label class="block text-xs font-bold text-slate-400 mb-1">Contato / Telefone *</label><input type="text" id="os-telefone" required class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 focus:border-emerald-500 outline-none"></div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Coordenadas (Lat, Lng)</label>
+                            <input type="text" id="os-coords" placeholder="-18.91, -48.27" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 focus:border-emerald-500 outline-none font-mono text-sm">
+                        </div>
+                        <div class="md:col-span-2"><label class="block text-xs font-bold text-slate-400 mb-1">Relato / Falha *</label><textarea id="os-falha" required rows="2" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 focus:border-emerald-500 outline-none"></textarea></div>
+                        <div class="md:col-span-2 flex justify-end">
+                            <button type="submit" id="btn-criar-os" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-6 rounded-lg transition shadow-lg shadow-emerald-500/20"><i class="fas fa-save mr-2"></i>Registrar OS</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TAB: GESTÃO DE OS E MAPA -->
+            <div id="tab-os" class="tab-content animate-fade">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[75vh]">
+                    <!-- Lista Lateral -->
+                    <div class="glass-panel rounded-2xl flex flex-col overflow-hidden">
+                        <div class="p-4 border-b border-slate-700/50 flex gap-2">
+                            <button onclick="filtrarFilaOS('aberta')" id="btn-fila-aberta" class="flex-1 py-1.5 rounded-lg bg-indigo-500 text-white text-xs font-bold">Abertas</button>
+                            <button onclick="filtrarFilaOS('atribuida')" id="btn-fila-atribuida" class="flex-1 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold">Atribuídas</button>
+                            <button onclick="filtrarFilaOS('fechada')" id="btn-fila-fechada" class="flex-1 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold">Concluídas</button>
+                        </div>
+                        <div id="lista-os-lateral" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
+                    </div>
+                    <!-- Área Principal (Mapa ou Atribuição) -->
+                    <div class="lg:col-span-2 flex flex-col gap-4">
+                        <div class="glass-panel rounded-2xl p-2 flex-shrink-0 h-[45%] relative z-0">
+                            <div id="mapa-atribuicao" class="w-full h-full rounded-xl bg-slate-800"></div>
+                        </div>
+                        <div class="glass-panel rounded-2xl p-5 flex-1 overflow-y-auto" id="painel-atribuicao">
+                            <div class="text-center text-slate-500 mt-10">
+                                <i class="fas fa-hand-pointer text-4xl mb-3 opacity-50"></i>
+                                <p>Selecione uma OS na lista lateral para ver detalhes e atribuir técnicos.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: TÉCNICOS E AGENDA -->
+            <div id="tab-tecnicos" class="tab-content animate-fade">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <!-- Cadastro Tec -->
+                    <div class="glass-panel rounded-2xl p-5 h-fit">
+                        <h3 class="font-bold mb-4 flex items-center gap-2"><i class="fas fa-user-plus text-indigo-400"></i> Novo Técnico</h3>
+                        <form onsubmit="criarTecnico(event)" class="space-y-3">
+                            <div><input type="text" id="tec-nome" placeholder="Nome Completo *" required class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none"></div>
+                            <div><input type="text" id="tec-funcao" placeholder="Função / Equipe *" required class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none"></div>
+                            <button id="btn-criar-tecnico" class="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded-lg font-bold text-sm transition"><i class="fas fa-check mr-1"></i> Adicionar</button>
+                        </form>
+                    </div>
+                    <!-- Lista/Agenda -->
+                    <div class="lg:col-span-3 glass-panel rounded-2xl p-5">
+                        <h3 class="font-bold mb-4 flex items-center gap-2 text-lg"><i class="fas fa-calendar-alt text-indigo-400"></i> Equipe e Agendas</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="lista-tecnicos-cards"></div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         TELA 3: TÉCNICO (MOBILE FIRST)
+    ═══════════════════════════════════════════════════ -->
+    <div id="view-tecnico" class="view min-h-screen bg-slate-900 flex flex-col">
+        <header class="glass-panel sticky top-0 z-40 border-b-0 px-4 py-3 flex items-center justify-between shadow-lg shadow-black/30">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center font-bold text-lg shadow-lg" id="tec-app-avatar">T</div>
+                <div>
+                    <h2 class="font-black text-sm" id="tec-app-nome">Técnico</h2>
+                    <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 uppercase font-bold tracking-wider">Em Campo</span>
+                </div>
+            </div>
+            <button onclick="logout()" class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><i class="fas fa-power-off"></i></button>
+        </header>
+
+        <div class="p-4 flex-1 overflow-y-auto">
+            <h3 class="font-bold text-slate-400 uppercase text-xs tracking-wider mb-3 ml-1"><i class="fas fa-calendar-day mr-1"></i> Suas OSs de Hoje</h3>
+            <div id="tec-app-lista" class="space-y-3"></div>
+        </div>
+
+        <!-- MODAL EXECUÇÃO OS -->
+        <div id="modal-exec-os" class="fixed inset-0 z-50 bg-slate-900 hidden flex-col animate-fade">
+            <header class="p-4 bg-slate-800 flex items-center gap-3 border-b border-slate-700">
+                <button onclick="fecharModalExec()" class="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center"><i class="fas fa-arrow-left"></i></button>
+                <div class="flex-1">
+                    <h3 class="font-bold" id="exec-cliente">Cliente</h3>
+                    <p class="text-xs text-indigo-400" id="exec-hora">00:00</p>
+                </div>
+            </header>
+            <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
+                <div class="glass-card p-4 rounded-xl border-l-4 border-l-indigo-500">
+                    <p class="text-xs text-slate-400 uppercase font-bold mb-1">Falha Relatada</p>
+                    <p class="text-sm font-medium mb-3" id="exec-falha"></p>
+                    <p class="text-xs text-slate-400 uppercase font-bold mb-1">Endereço</p>
+                    <p class="text-sm font-medium mb-3" id="exec-endereco"></p>
+                    <p class="text-xs text-slate-400 uppercase font-bold mb-1">Contato</p>
+                    <p class="text-sm font-medium" id="exec-telefone"></p>
+                </div>
+
+                <a href="#" id="exec-map-btn" target="_blank" class="w-full bg-blue-600/20 border border-blue-500/30 text-blue-400 py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition hover:bg-blue-600/30"><i class="fas fa-map-marked-alt"></i> Abrir no Navegador GPS</a>
+
+                <div class="glass-card p-4 rounded-xl">
+                    <h4 class="font-bold mb-3 flex items-center gap-2"><i class="fas fa-tasks text-emerald-400"></i> Resumo do Reparo *</h4>
+                    <textarea id="exec-notas" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:border-emerald-500 outline-none" placeholder="Descreva o que foi feito..."></textarea>
+                </div>
+
+                <div class="glass-card p-4 rounded-xl">
+                    <h4 class="font-bold mb-3 flex items-center gap-2"><i class="fas fa-signature text-amber-400"></i> Assinatura do Cliente</h4>
+                    <canvas id="signature-pad" class="w-full h-32 border border-slate-700 mb-2"></canvas>
+                    <div class="flex justify-end"><button onclick="limparAssinatura()" class="text-xs text-slate-400 hover:text-white underline">Limpar</button></div>
+                </div>
+
+                <input type="hidden" id="exec-os-id">
+                <button onclick="salvarExecucao()" id="btn-salvar-exec" class="w-full bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition text-lg flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> Encerrar OS</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ═══════════════════════════════════════════════════
+         FIREBASE SDK
+    ═══════════════════════════════════════════════════ -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        // ══════════════════════════════════════════════════════════
+        //  CONFIGURAÇÃO FIREBASE — cole aqui os dados do seu projeto
+        //  Siga o FIREBASE-SETUP.md para criar o projeto gratuitamente
+        //  Enquanto vazio, o sistema exibe o guia de configuração na tela
+        // ══════════════════════════════════════════════════════════
+        const firebaseConfig = {
+            apiKey:            "",
+            authDomain:        "",
+            projectId:         "",
+            storageBucket:     "",
+            messagingSenderId: "",
+            appId:             ""
+        };
+
+        // ── VERIFICAR SE FIREBASE ESTÁ CONFIGURADO ────────────────
+        const _FB_OK = !!(firebaseConfig.apiKey && firebaseConfig.projectId);
+
+        if (!_FB_OK) {
+            document.getElementById('loading-firebase').innerHTML = `
+                <div style="max-width:560px;width:100%;padding:24px 20px">
+                    <div style="text-align:center;margin-bottom:28px">
+                        <div style="width:64px;height:64px;background:linear-gradient(135deg,#6366f1,#a855f7);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+                            <i class="fas fa-satellite-dish" style="font-size:28px;color:#fff"></i>
+                        </div>
+                        <h2 style="font-size:22px;font-weight:900;margin-bottom:6px">Hub OS</h2>
+                        <p style="color:#94a3b8;font-size:14px">Configure o Firebase para ativar o sistema</p>
+                    </div>
+                    <div style="background:rgba(30,41,59,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:20px;font-size:13px">
+                        <div style="display:flex;gap:14px;align-items:flex-start">
+                            <div style="width:26px;height:26px;background:#4f46e5;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">1</div>
+                            <div><p style="font-weight:700;color:#e2e8f0;margin-bottom:4px">Crie o projeto Firebase</p>
+                            <p style="color:#94a3b8">Acesse <strong style="color:#818cf8">console.firebase.google.com</strong> → "Adicionar projeto" → desmarque o Google Analytics → Criar projeto</p></div>
+                        </div>
+                        <div style="display:flex;gap:14px;align-items:flex-start">
+                            <div style="width:26px;height:26px;background:#4f46e5;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">2</div>
+                            <div><p style="font-weight:700;color:#e2e8f0;margin-bottom:4px">Registre o app web e copie as credenciais</p>
+                            <p style="color:#94a3b8">Clique no ícone <strong style="color:#e2e8f0">&lt;/&gt;</strong> → dê um nome → "Registrar app" → copie o bloco <code style="color:#818cf8">firebaseConfig</code> que aparecer</p></div>
+                        </div>
+                        <div style="display:flex;gap:14px;align-items:flex-start">
+                            <div style="width:26px;height:26px;background:#4f46e5;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">3</div>
+                            <div><p style="font-weight:700;color:#e2e8f0;margin-bottom:4px">Crie o banco Firestore em modo de produção</p>
+                            <p style="color:#94a3b8">Menu lateral → Build → Firestore Database → "Criar banco de dados" → selecione <strong style="color:#e2e8f0">"Iniciar no modo de produção"</strong> → região <strong style="color:#e2e8f0">southamerica-east1</strong></p></div>
+                        </div>
+                        <div style="display:flex;gap:14px;align-items:flex-start">
+                            <div style="width:26px;height:26px;background:#4f46e5;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">4</div>
+                            <div><p style="font-weight:700;color:#e2e8f0;margin-bottom:4px">Configure as regras do Firestore</p>
+                            <p style="color:#94a3b8;margin-bottom:8px">Aba "Regras" → apague tudo → cole o código abaixo → clique "Publicar":</p>
+                            <pre style="background:#0f172a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-size:11px;color:#34d399;overflow-x:auto;margin:0">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /tecnicos/{id} { allow read, write: if true; }
+    match /oss/{id}      { allow read, write: if true; }
+    match /config/{id}   { allow read, write: if true; }
+  }
+}</pre></div>
+                        </div>
+                        <div style="display:flex;gap:14px;align-items:flex-start">
+                            <div style="width:26px;height:26px;background:#059669;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0"><i class="fas fa-check" style="font-size:11px"></i></div>
+                            <div><p style="font-weight:700;color:#e2e8f0;margin-bottom:4px">Cole as credenciais neste arquivo HTML</p>
+                            <p style="color:#94a3b8">Abra <strong style="color:#e2e8f0">gestao-unificada.html</strong> em qualquer editor de texto → procure a seção <code style="color:#818cf8">firebaseConfig</code> → preencha os 6 campos com os dados copiados → salve → reabra o arquivo no navegador</p></div>
+                        </div>
+                    </div>
+                    <p style="text-align:center;color:#475569;font-size:12px;margin-top:20px">Consulte o <strong style="color:#64748b">FIREBASE-SETUP.md</strong> para detalhes adicionais</p>
+                </div>`;
+        } else {
+            try {
+                firebase.initializeApp(firebaseConfig);
+            } catch(e) {
+                document.getElementById('loading-firebase').innerHTML =
+                    `<div style="text-align:center;padding:32px;max-width:400px">
+                        <i class="fas fa-exclamation-triangle" style="font-size:36px;color:#f87171;margin-bottom:16px"></i>
+                        <h2 style="font-size:18px;font-weight:700;margin-bottom:8px">Erro ao conectar ao Firebase</h2>
+                        <p style="color:#94a3b8;font-size:13px;margin-bottom:8px">Verifique se as credenciais em <strong>firebaseConfig</strong> estão corretas.</p>
+                        <p style="color:#f87171;font-size:12px;margin-bottom:16px">${e.message}</p>
+                        <button onclick="location.reload()" style="background:#4f46e5;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;border:none;color:#fff;cursor:pointer">Tentar novamente</button>
+                    </div>`;
+                throw e;
+            }
+        }
+
+        // ── ESTADO ────────────────────────────────────────────────
+        let state = {
+            tecnicos:    [],
+            oss:         [],
+            usuarioLogado: null
+        };
+
+        function salvarSessao() {
+            sessionStorage.setItem('hubos_v3_sessao', JSON.stringify(state.usuarioLogado));
+        }
+        function carregarSessao() {
+            try {
+                const s = sessionStorage.getItem('hubos_v3_sessao');
+                if (s) state.usuarioLogado = JSON.parse(s);
+            } catch(e) {}
+        }
+
+        // ── FIRESTORE ─────────────────────────────────────────────
+        let db, colTecnicos, colOSS, configRef;
+        if (_FB_OK) {
+            db          = firebase.firestore();
+            colTecnicos = db.collection('tecnicos');
+            colOSS      = db.collection('oss');
+            configRef   = db.collection('config').doc('app');
+        }
+
+        async function _nextOSId() {
+            return db.runTransaction(async t => {
+                const snap = await t.get(configRef);
+                const next = snap.exists ? (snap.data().contadorId || 100) + 1 : 101;
+                t.set(configRef, { contadorId: next }, { merge: true });
+                return next;
+            });
+        }
+        async function _writeOS(id, data)      { await colOSS.doc(String(id)).set(data); }
+        async function _updateOS(id, updates)  { await colOSS.doc(String(id)).update(updates); }
+        async function _writeTecnico(id, data) { await colTecnicos.doc(String(id)).set(data); }
+
+        // ── LISTENERS TEMPO REAL ──────────────────────────────────
+        let _listenersAtivos = false;
+        function iniciarListeners() {
+            if (!_FB_OK || _listenersAtivos) return;
+            _listenersAtivos = true;
+
+            colTecnicos.orderBy('criadoEm').onSnapshot(snap => {
+                state.tecnicos = snap.docs.map(d => d.data());
+                _onDadosAtualizados();
+            }, err => console.error('[Firestore/tecnicos]', err));
+
+            colOSS.orderBy('criadoEm').onSnapshot(snap => {
+                state.oss = snap.docs.map(d => d.data());
+                _onDadosAtualizados();
+                document.getElementById('loading-firebase').classList.add('hidden');
+            }, err => {
+                console.error('[Firestore/oss]', err);
+                document.getElementById('loading-firebase').innerHTML =
+                    `<div style="text-align:center;padding:32px;max-width:400px">
+                        <i class="fas fa-wifi" style="font-size:36px;color:#f87171;margin-bottom:16px"></i>
+                        <h2 style="font-size:18px;font-weight:700;margin-bottom:8px">Erro de conexão com Firestore</h2>
+                        <p style="color:#94a3b8;font-size:13px;margin-bottom:8px">Verifique se o Firestore está ativo e as regras estão configuradas.</p>
+                        <p style="color:#f87171;font-size:12px;margin-bottom:16px">${err.message}</p>
+                        <button onclick="location.reload()" style="background:#4f46e5;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;border:none;color:#fff;cursor:pointer">Tentar novamente</button>
+                    </div>`;
+            });
+        }
+
+        function _onDadosAtualizados() {
+            if (!state.usuarioLogado) {
+                // Atualiza lista de técnicos na tela de login se estiver visível
+                const sel = document.getElementById('tech-login-select');
+                if (sel && !sel.classList.contains('hidden')) _renderLoginTechList();
+                return;
+            }
+            if (state.usuarioLogado.tipo === 'gestor') {
+                atualizarDashboard();
+                renderFilaLateral(filtroOSAtual);
+                renderTecnicosCards();
+            } else if (state.usuarioLogado.tipo === 'tecnico') {
+                renderTecAppLista();
+            }
+        }
+
+        // ── MAPA ──────────────────────────────────────────────────
+        let mapa, markerGroup;
+        function initMap() {
+            if (mapa) return;
+            const container = document.getElementById('mapa-atribuicao');
+            if (!container) return;
+            mapa = L.map('mapa-atribuicao').setView([-18.91, -48.27], 12);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(mapa);
+            markerGroup = L.featureGroup().addTo(mapa);
+        }
+
+        // ── ASSINATURA ────────────────────────────────────────────
+        let canvas, ctx, isDrawing = false;
+        function initAssinatura() {
+            canvas = document.getElementById('signature-pad');
+            if (!canvas) return;
+            ctx = canvas.getContext('2d');
+            canvas.width  = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            ctx.lineWidth   = 2;
+            ctx.strokeStyle = '#1e293b';
+
+            const getX = e => e.touches ? e.touches[0].clientX - canvas.getBoundingClientRect().left : e.offsetX;
+            const getY = e => e.touches ? e.touches[0].clientY - canvas.getBoundingClientRect().top  : e.offsetY;
+            const start = e => { isDrawing = true; ctx.beginPath(); ctx.moveTo(getX(e), getY(e)); e.preventDefault(); };
+            const move  = e => { if (isDrawing) { ctx.lineTo(getX(e), getY(e)); ctx.stroke(); } e.preventDefault(); };
+            const end   = () => { isDrawing = false; };
+
+            canvas.addEventListener('mousedown',  start);
+            canvas.addEventListener('mousemove',  move);
+            canvas.addEventListener('mouseup',    end);
+            canvas.addEventListener('touchstart', start, { passive: false });
+            canvas.addEventListener('touchmove',  move,  { passive: false });
+            canvas.addEventListener('touchend',   end);
+        }
+        function limparAssinatura() { if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        // ── NAVEGAÇÃO ─────────────────────────────────────────────
+        function showView(id) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+        function switchTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+
+            document.querySelectorAll('nav button[id^="btn-tab-"]').forEach(b => {
+                b.classList.remove('border-indigo-500', 'text-indigo-400');
+                b.classList.add('border-transparent', 'text-slate-400');
+            });
+            const btn = document.getElementById('btn-' + id);
+            if (btn) {
+                btn.classList.remove('border-transparent', 'text-slate-400');
+                btn.classList.add('border-indigo-500', 'text-indigo-400');
+            }
+
+            if (id === 'tab-os') {
+                setTimeout(() => { if (mapa) mapa.invalidateSize(); else initMap(); renderMapaOSs(); }, 200);
+            }
+        }
+
+        // ── LOGIN ─────────────────────────────────────────────────
+        function loginGestor() {
+            state.usuarioLogado = { tipo: 'gestor' };
+            salvarSessao();
+            bootGestor();
+        }
+
+        function _renderLoginTechList() {
+            const list = document.getElementById('tech-list-login');
+            if (state.tecnicos.length === 0) {
+                list.innerHTML = '<p class="text-xs text-slate-400 p-2 text-center">Nenhum técnico cadastrado ainda.</p>';
+                return;
+            }
+            list.innerHTML = state.tecnicos.map(t => `
+                <button onclick="loginTecnico(${t.id})" class="w-full text-left p-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs" style="background:${t.cor}">${t.nome[0]}</div>
+                    <div><div class="font-bold text-sm">${t.nome}</div><div class="text-xs text-slate-400">${t.funcao}</div></div>
+                </button>
+            `).join('');
+        }
+
+        function mostrarLoginTecnico() {
+            document.getElementById('tech-login-select').classList.remove('hidden');
+            _renderLoginTechList();
+        }
+
+        function loginTecnico(id) {
+            state.usuarioLogado = { tipo: 'tecnico', id };
+            salvarSessao();
+            bootTecnico();
+        }
+
+        function logout() {
+            state.usuarioLogado = null;
+            salvarSessao();
+            document.getElementById('tech-login-select').classList.add('hidden');
+            showView('view-login');
+        }
+
+        // ── GESTOR BOOT ───────────────────────────────────────────
+        function bootGestor() {
+            showView('view-gestor');
+            switchTab('tab-dashboard');
+            atualizarDashboard();
+            renderFilaLateral('aberta');
+            renderTecnicosCards();
+        }
+
+        function atualizarDashboard() {
+            const abertas    = state.oss.filter(o => o.status === 'aberta').length;
+            const atribuidas = state.oss.filter(o => o.status === 'atribuida').length;
+            const concluidas = state.oss.filter(o => o.status === 'fechada').length;
+            document.getElementById('stat-abertas').textContent    = abertas;
+            document.getElementById('stat-atribuidas').textContent = atribuidas;
+            document.getElementById('stat-concluidas').textContent = concluidas;
+            document.getElementById('stat-tecnicos').textContent   = state.tecnicos.length;
+            document.getElementById('badge-pendentes').textContent = abertas + atribuidas;
+        }
+
+        async function criarOS(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-criar-os');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Salvando...';
+            try {
+                const id = await _nextOSId();
+                const criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+                await _writeOS(id, {
+                    id,
+                    cliente:      document.getElementById('os-cliente').value.trim(),
+                    ponto:        document.getElementById('os-ponto').value.trim(),
+                    telefone:     document.getElementById('os-telefone').value.trim(),
+                    coords:       document.getElementById('os-coords').value.trim() || '-18.91, -48.27',
+                    falha:        document.getElementById('os-falha').value.trim(),
+                    status:       'aberta',
+                    dataCriacao:  new Date().toLocaleDateString('pt-BR'),
+                    tecnicosIds:  [],
+                    tratativa:    null,
+                    notasExecucao: null,
+                    criadoEm
+                });
+                e.target.reset();
+                alert('OS #' + id + ' criada com sucesso!');
+            } catch(err) {
+                console.error(err);
+                alert('Erro ao criar OS: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save mr-2"></i>Registrar OS';
+            }
+        }
+
+        async function criarTecnico(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-criar-tecnico');
+            btn.disabled = true;
+            try {
+                const cores = ['#ef4444','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899'];
+                const id = Date.now();
+                const criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+                await _writeTecnico(id, {
+                    id,
+                    nome:     document.getElementById('tec-nome').value.trim(),
+                    funcao:   document.getElementById('tec-funcao').value.trim(),
+                    cor:      cores[Math.floor(Math.random() * cores.length)],
+                    criadoEm
+                });
+                e.target.reset();
+            } catch(err) {
+                alert('Erro ao criar técnico: ' + err.message);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ── FILA & ATRIBUIÇÃO ─────────────────────────────────────
+        let filtroOSAtual = 'aberta';
+        function filtrarFilaOS(status) {
+            filtroOSAtual = status;
+            ['aberta','atribuida','fechada'].forEach(s => {
+                const btn = document.getElementById('btn-fila-' + s);
+                if (!btn) return;
+                if (s === status) {
+                    btn.classList.remove('bg-slate-800','text-slate-400');
+                    btn.classList.add('bg-indigo-500','text-white');
+                } else {
+                    btn.classList.add('bg-slate-800','text-slate-400');
+                    btn.classList.remove('bg-indigo-500','text-white');
+                }
+            });
+            renderFilaLateral(status);
+        }
+
+        function renderFilaLateral(status) {
+            const lista = state.oss.filter(o => o.status === status);
+            const cont  = document.getElementById('lista-os-lateral');
+            if (!cont) return;
+            if (lista.length === 0) {
+                cont.innerHTML = '<p class="text-center text-xs text-slate-500 mt-4">Nenhuma OS encontrada</p>';
+                renderMapaOSs();
+                return;
+            }
+            cont.innerHTML = lista.map(os => {
+                const cor = status === 'aberta' ? '#f59e0b' : status === 'fechada' ? '#10b981' : '#3b82f6';
+                let tecsStr = '';
+                if (os.tecnicosIds && os.tecnicosIds.length > 0) {
+                    const nomes = os.tecnicosIds.map(tid => state.tecnicos.find(t => t.id === tid)?.nome).filter(Boolean);
+                    const dh = os.tratativa ? `${os.tratativa.data} ${os.tratativa.hora}` : '';
+                    tecsStr = `<div class="text-[10px] mt-1 text-slate-400"><i class="fas fa-users text-indigo-400"></i> ${nomes.join(', ')} <br>🗓 ${dh}</div>`;
+                }
+                return `
+                <div onclick="abrirPainelAtribuicao(${os.id})" class="bg-slate-800/50 border border-slate-700 p-3 rounded-xl cursor-pointer hover:border-indigo-500 transition">
+                    <div class="flex justify-between items-start mb-1">
+                        <strong class="text-sm font-bold truncate max-w-[70%]">${os.cliente}</strong>
+                        <span class="w-2 h-2 rounded-full mt-1" style="background:${cor}"></span>
+                    </div>
+                    <p class="text-xs text-slate-400 truncate">${os.falha}</p>
+                    ${tecsStr}
+                </div>`;
+            }).join('');
+            renderMapaOSs();
+        }
+
+        let _atribTecs = [], _atribData = '', _atribHora = '';
+        function abrirPainelAtribuicao(id, keepState = false) {
+            const os = state.oss.find(o => o.id === id);
+            if (!os) return;
+
+            if (!keepState) {
+                _atribTecs = os.tecnicosIds ? [...os.tecnicosIds] : [];
+                _atribData = os.tratativa ? os.tratativa.data : new Date().toLocaleDateString('pt-BR');
+                _atribHora = os.tratativa ? os.tratativa.hora : '08:00';
+            }
+
+            const p = document.getElementById('painel-atribuicao');
+            p.innerHTML = `
+                <div class="flex justify-between items-start border-b border-slate-700 pb-4 mb-4">
+                    <div>
+                        <h3 class="font-black text-xl text-indigo-400">#${os.id} - ${os.cliente}</h3>
+                        <p class="text-sm text-slate-300"><i class="fas fa-map-marker-alt text-rose-400 mr-1"></i> ${os.ponto}</p>
+                        <p class="text-xs text-slate-400 mt-1">${os.falha}</p>
+                    </div>
+                    ${os.status !== 'fechada' ? `<button onclick="fecharOSGestor(${os.id})" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded flex items-center gap-2 text-xs font-bold hover:bg-emerald-500 hover:text-white transition"><i class="fas fa-check"></i> Encerrar OS</button>` : ''}
+                </div>
+
+                ${os.status === 'fechada'
+                    ? `<div class="bg-emerald-500/20 text-emerald-400 p-3 rounded-lg text-sm mb-4"><i class="fas fa-check-circle mr-2"></i>OS Concluída. Notas: ${os.notasExecucao || 'N/A'}</div>`
+                    : `
+                <h4 class="font-bold text-sm mb-3">1. Selecione os Técnicos</h4>
+                <div class="flex flex-wrap gap-2 mb-6" id="wrap-tecs-atrib">
+                    ${state.tecnicos.map(t => {
+                        const sel = _atribTecs.includes(t.id);
+                        return `<button onclick="toggleTecAtrib(${t.id}, ${os.id})" class="px-3 py-1.5 rounded-full border ${sel ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-slate-800 border-slate-600 text-slate-400'} text-xs font-bold transition flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full" style="background:${t.cor}"></span> ${t.nome}
+                        </button>`;
+                    }).join('')}
+                </div>
+
+                <h4 class="font-bold text-sm mb-3">2. Agendamento</h4>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Data</label>
+                        <input type="text" id="inp-atrib-data" value="${_atribData}" oninput="_atribData=this.value" placeholder="DD/MM/AAAA" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Hora</label>
+                        <input type="time" id="inp-atrib-hora" value="${_atribHora}" oninput="_atribHora=this.value" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <button onclick="salvarAtribuicao(${os.id})" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/20 transition flex justify-center items-center gap-2">
+                    <i class="fas fa-save"></i> Salvar Atribuição
+                </button>`
+                }
+            `;
+
+            if (mapa && os.coords) {
+                const [lat, lng] = os.coords.split(',').map(Number);
+                if (lat && lng) mapa.setView([lat, lng], 14);
+            }
+        }
+
+        function toggleTecAtrib(tecId, osId) {
+            if (_atribTecs.includes(tecId)) _atribTecs = _atribTecs.filter(i => i !== tecId);
+            else _atribTecs.push(tecId);
+            abrirPainelAtribuicao(osId, true);
+        }
+
+        async function salvarAtribuicao(osId) {
+            if (_atribTecs.length === 0) return alert('Selecione pelo menos 1 técnico');
+            const data = document.getElementById('inp-atrib-data').value;
+            const hora = document.getElementById('inp-atrib-hora').value;
+            const updates = { tecnicosIds: _atribTecs, tratativa: { data, hora }, status: 'atribuida' };
+
+            const os = state.oss.find(o => o.id === osId);
+            if (os) Object.assign(os, updates);
+
+            try {
+                await _updateOS(osId, updates);
+                filtrarFilaOS('atribuida');
+                abrirPainelAtribuicao(osId);
+                alert('Atribuído com sucesso!');
+            } catch(err) {
+                if (os) { os.status = 'aberta'; os.tecnicosIds = []; os.tratativa = null; }
+                alert('Erro ao salvar: ' + err.message);
+            }
+        }
+
+        async function fecharOSGestor(osId) {
+            if (!confirm('Encerrar esta OS manualmente?')) return;
+            const os = state.oss.find(o => o.id === osId);
+            const prevStatus = os?.status;
+            const updates = { status: 'fechada', notasExecucao: 'Encerrada via painel do gestor' };
+            if (os) Object.assign(os, updates);
+            try {
+                await _updateOS(osId, updates);
+                filtrarFilaOS('fechada');
+                abrirPainelAtribuicao(osId);
+            } catch(err) {
+                if (os) { os.status = prevStatus; os.notasExecucao = null; }
+                alert('Erro: ' + err.message);
+            }
+        }
+
+        function renderMapaOSs() {
+            if (!mapa || !markerGroup) return;
+            markerGroup.clearLayers();
+            const lista = state.oss.filter(o => o.status === filtroOSAtual);
+            lista.forEach(os => {
+                if (!os.coords) return;
+                const [lat, lng] = os.coords.split(',').map(Number);
+                if (!lat || !lng) return;
+                const cor = os.status === 'aberta' ? '#f59e0b' : os.status === 'fechada' ? '#10b981' : '#3b82f6';
+                const circle = L.circleMarker([lat, lng], { radius: 8, fillColor: cor, color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.9 });
+                circle.bindPopup(`<strong style="color:#0f172a">${os.cliente}</strong><br><span style="color:#475569;font-size:11px">${os.falha}</span>`).on('click', () => abrirPainelAtribuicao(os.id));
+                markerGroup.addLayer(circle);
+            });
+            if (lista.length > 0) mapa.fitBounds(markerGroup.getBounds(), { padding: [30, 30] });
+        }
+
+        // ── AGENDA TÉCNICOS ───────────────────────────────────────
+        function renderTecnicosCards() {
+            const cont = document.getElementById('lista-tecnicos-cards');
+            if (!cont) return;
+            const hojeData = new Date().toLocaleDateString('pt-BR');
+            cont.innerHTML = state.tecnicos.map(t => {
+                const osTec = state.oss.filter(o =>
+                    o.tecnicosIds && o.tecnicosIds.includes(t.id) &&
+                    o.tratativa   && o.tratativa.data === hojeData &&
+                    o.status !== 'fechada'
+                );
+                return `
+                <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-lg" style="background:${t.cor}">${t.nome[0]}</div>
+                        <div>
+                            <h4 class="font-bold leading-none">${t.nome}</h4>
+                            <span class="text-xs text-slate-400">${t.funcao}</span>
+                        </div>
+                    </div>
+                    <div class="border-t border-slate-700 pt-3">
+                        <p class="text-xs font-bold text-slate-500 uppercase mb-2">Agenda de Hoje (${osTec.length})</p>
+                        <div class="space-y-2">
+                            ${osTec.length === 0 ? '<p class="text-xs text-slate-400">Livre</p>' : osTec.map(o => `
+                                <div class="bg-slate-900 rounded p-2 text-xs border-l-2" style="border-color:${t.cor}">
+                                    <div class="flex justify-between text-slate-300 font-bold mb-0.5">
+                                        <span>${o.tratativa.hora}</span>
+                                        <span class="text-[10px] bg-indigo-500/20 text-indigo-400 px-1 rounded">OS-${o.id}</span>
+                                    </div>
+                                    <div class="truncate text-slate-400">${o.cliente}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // ── TÉCNICO APP ───────────────────────────────────────────
+        function bootTecnico() {
+            showView('view-tecnico');
+            const tec = state.tecnicos.find(t => t.id === state.usuarioLogado.id);
+            if (tec) {
+                document.getElementById('tec-app-nome').textContent = tec.nome;
+                document.getElementById('tec-app-avatar').textContent = tec.nome[0];
+                document.getElementById('tec-app-avatar').style.background = tec.cor;
+            }
+            renderTecAppLista();
+            initAssinatura();
+        }
+
+        function renderTecAppLista() {
+            const cont = document.getElementById('tec-app-lista');
+            if (!cont || !state.usuarioLogado) return;
+
+            const tec = state.tecnicos.find(t => t.id === state.usuarioLogado.id);
+            if (tec) {
+                document.getElementById('tec-app-nome').textContent = tec.nome;
+                document.getElementById('tec-app-avatar').textContent = tec.nome[0];
+                document.getElementById('tec-app-avatar').style.background = tec.cor;
+            }
+
+            const tecId = state.usuarioLogado.id;
+            const hoje  = new Date().toLocaleDateString('pt-BR');
+            let oss = state.oss.filter(o =>
+                o.tecnicosIds && o.tecnicosIds.includes(tecId) &&
+                o.tratativa   && o.tratativa.data === hoje
+            );
+            oss.sort((a, b) => a.tratativa.hora.localeCompare(b.tratativa.hora));
+
+            if (oss.length === 0) {
+                cont.innerHTML = `
+                <div class="glass-panel p-8 rounded-2xl text-center border-t border-t-emerald-500/30">
+                    <i class="fas fa-mug-hot text-4xl text-slate-500 mb-3"></i>
+                    <h3 class="font-bold text-slate-300">Tudo limpo!</h3>
+                    <p class="text-sm text-slate-500 mt-1">Sua agenda de hoje está vazia.</p>
+                </div>`;
+                return;
+            }
+
+            cont.innerHTML = oss.map(os => {
+                const isConcluida = os.status === 'fechada';
+                return `
+                <div class="glass-card p-4 rounded-xl relative overflow-hidden ${isConcluida ? 'opacity-60' : ''}">
+                    <div class="absolute left-0 top-0 bottom-0 w-1.5 ${isConcluida ? 'bg-emerald-500' : 'bg-indigo-500'}"></div>
+                    <div class="flex justify-between items-start mb-2 pl-2">
+                        <div class="font-black text-lg text-slate-200 leading-tight">${os.cliente}</div>
+                        <div class="text-sm font-bold bg-slate-800 px-2 py-0.5 rounded text-indigo-400">${os.tratativa.hora}</div>
+                    </div>
+                    <div class="pl-2 space-y-1 mb-4">
+                        <div class="text-xs text-slate-400"><i class="fas fa-map-marker-alt text-rose-400 w-4 text-center"></i> ${os.ponto}</div>
+                        <div class="text-xs text-slate-400"><i class="fas fa-exclamation-triangle text-amber-400 w-4 text-center"></i> ${os.falha}</div>
+                    </div>
+                    <div class="pl-2">
+                        ${isConcluida
+                            ? `<div class="w-full text-center py-2 bg-emerald-500/10 text-emerald-500 font-bold text-xs rounded-lg border border-emerald-500/20"><i class="fas fa-check-circle mr-1"></i> Concluído</div>`
+                            : `<button onclick="abrirExecucao(${os.id})" class="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg text-sm transition active:scale-95"><i class="fas fa-play mr-1"></i> Iniciar Atendimento</button>`
+                        }
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function abrirExecucao(id) {
+            const os = state.oss.find(o => o.id === id);
+            if (!os) return;
+            document.getElementById('exec-os-id').value        = os.id;
+            document.getElementById('exec-cliente').textContent = os.cliente;
+            document.getElementById('exec-hora').textContent    = 'Agendado: ' + os.tratativa.hora;
+            document.getElementById('exec-falha').textContent   = os.falha;
+            document.getElementById('exec-endereco').textContent = os.ponto;
+            document.getElementById('exec-telefone').textContent = os.telefone;
+            document.getElementById('exec-notas').value = '';
+
+            if (os.coords) {
+                const q = encodeURIComponent(os.coords);
+                document.getElementById('exec-map-btn').href = `https://www.google.com/maps/search/?api=1&query=${q}`;
+            }
+
+            limparAssinatura();
+            const modal = document.getElementById('modal-exec-os');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => { if (canvas) { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; } }, 100);
+        }
+
+        function fecharModalExec() {
+            const modal = document.getElementById('modal-exec-os');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function salvarExecucao() {
+            const id    = parseInt(document.getElementById('exec-os-id').value);
+            const notas = document.getElementById('exec-notas').value.trim();
+            if (notas.length < 5) return alert('Preencha o resumo do reparo corretamente.');
+
+            const btn = document.getElementById('btn-salvar-exec');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Salvando...';
+
+            const os = state.oss.find(o => o.id === id);
+            if (os) { os.status = 'fechada'; os.notasExecucao = notas; }
+
+            try {
+                await _updateOS(id, { status: 'fechada', notasExecucao: notas });
+                fecharModalExec();
+                renderTecAppLista();
+            } catch(err) {
+                if (os) { os.status = 'atribuida'; os.notasExecucao = null; }
+                alert('Erro ao salvar: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-circle"></i> Encerrar OS';
+            }
+        }
+
+        // ── INIT ──────────────────────────────────────────────────
+        window.onload = () => {
+            if (!_FB_OK) return;
+            carregarSessao();
+            iniciarListeners();
+            if (state.usuarioLogado) {
+                if (state.usuarioLogado.tipo === 'gestor') bootGestor();
+                else bootTecnico();
+            } else {
+                showView('view-login');
+            }
+        };
+    </script>
+</body>
+</html>
