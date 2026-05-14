@@ -355,7 +355,7 @@
             <div id="tab-tecnicos" class="tab-content animate-fade">
                 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     <!-- Cadastro Tec -->
-                    <div class="glass-panel rounded-2xl p-5 h-fit">
+                    <div id="card-novo-tecnico" class="glass-panel rounded-2xl p-5 h-fit">
                         <h3 class="font-bold mb-4 flex items-center gap-2"><i class="fas fa-user-plus text-indigo-400"></i> Novo Técnico</h3>
                         <form onsubmit="criarTecnico(event)" class="space-y-3">
                             <div><input type="text" id="tec-nome" placeholder="Nome Completo *" required class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none"></div>
@@ -1014,7 +1014,7 @@ service cloud.firestore {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Salvando...';
             try {
-                const entrada = { id: Date.now().toString(), nome, senha, master: true };
+                const entrada = { id: Date.now().toString(), nome, senha, master: true, original: true };
                 await configRef.set({ senhasGestor: [entrada] }, { merge: true });
                 state.usuarioLogado = { tipo: 'gestor', master: true, nomeGestor: nome };
                 salvarSessao();
@@ -1063,9 +1063,14 @@ service cloud.firestore {
         }
 
         // ── GESTÃO DE SENHAS (só master) ──────────────────────────
+        let _editandoSenhaId = null;
+
         async function renderSenhasGestor() {
+            const isMaster = state.usuarioLogado && state.usuarioLogado.master;
+            const cardNovo = document.getElementById('card-novo-tecnico');
+            if (cardNovo) cardNovo.classList.toggle('hidden', !isMaster);
             const card = document.getElementById('card-senhas-gestor');
-            if (!state.usuarioLogado || !state.usuarioLogado.master) { card.classList.add('hidden'); return; }
+            if (!isMaster) { card.classList.add('hidden'); return; }
             card.classList.remove('hidden');
             try {
                 const snap   = await configRef.get();
@@ -1075,27 +1080,103 @@ service cloud.firestore {
                     lista.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">Nenhuma senha cadastrada.</p>';
                     return;
                 }
-                lista.innerHTML = senhas.map(s => `
+                lista.innerHTML = senhas.map(s => {
+                    if (s.id === _editandoSenhaId) {
+                        return `
+                        <div class="bg-slate-800/80 rounded-lg px-3 py-3 border border-indigo-500/40 space-y-2">
+                            <p class="text-xs font-bold text-indigo-400"><i class="fas fa-pen mr-1"></i>Editando: ${s.nome}</p>
+                            <input type="text" id="edit-senha-nome" value="${s.nome}" placeholder="Nome *"
+                                   class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-1.5 text-sm outline-none">
+                            <input type="password" id="edit-senha-nova" placeholder="Nova senha (em branco = não altera)"
+                                   class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-1.5 text-sm outline-none">
+                            <input type="password" id="edit-senha-confirmar" placeholder="Confirmar nova senha"
+                                   class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-1.5 text-sm outline-none"
+                                   onkeydown="if(event.key==='Enter') salvarEdicaoSenhaGestor('${s.id}')">
+                            <p id="edit-senha-erro" class="text-red-400 text-xs hidden"><i class="fas fa-exclamation-circle mr-1"></i><span id="edit-senha-erro-txt"></span></p>
+                            <div class="flex gap-2 pt-1">
+                                <button onclick="fecharEditarSenhaGestor()" class="flex-1 py-1.5 rounded-lg bg-slate-700 text-sm font-bold">Cancelar</button>
+                                <button onclick="salvarEdicaoSenhaGestor('${s.id}')" class="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-bold transition">Salvar</button>
+                            </div>
+                        </div>`;
+                    }
+                    const _protegido = s.original || s.nome.trim().toLowerCase() === 'admin';
+                    const starBtn = _protegido
+                        ? `<i class="fas fa-star text-amber-400 px-1.5 text-sm" title="Super Admin permanente — protegido"></i>`
+                        : s.master
+                            ? `<button onclick="toggleMasterGestor('${s.id}')" class="w-7 h-7 rounded-lg hover:bg-amber-500/20 text-amber-400 flex items-center justify-center transition" title="Remover Super Admin"><i class="fas fa-star text-sm"></i></button>`
+                            : `<button onclick="toggleMasterGestor('${s.id}')" class="w-7 h-7 rounded-lg hover:bg-amber-500/20 text-slate-500 hover:text-amber-400 flex items-center justify-center transition" title="Promover a Super Admin"><i class="far fa-star text-sm"></i></button>`;
+                    return `
                     <div class="flex items-center justify-between bg-slate-800/60 rounded-lg px-3 py-2 border border-slate-700">
-                        <div class="flex items-center gap-2 min-w-0">
-                            <span class="text-sm font-bold truncate">${s.nome}</span>
-                            ${s.master
-                                ? '<span class="flex-shrink-0 text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">MASTER</span>'
-                                : '<span class="flex-shrink-0 text-[10px] bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full font-bold">ADMIN</span>'}
+                        <span class="text-sm font-bold truncate">${s.nome}</span>
+                        <div class="flex items-center gap-1 ml-2 flex-shrink-0">
+                            ${starBtn}
+                            ${!s.master ? `
+                            <button onclick="abrirEditarSenhaGestor('${s.id}')" class="w-7 h-7 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/30 text-indigo-400 flex items-center justify-center transition"><i class="fas fa-pen text-xs"></i></button>
+                            <button onclick="excluirSenhaGestor('${s.id}')" class="w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/30 text-red-400 flex items-center justify-center transition"><i class="fas fa-trash text-xs"></i></button>
+                            ` : ''}
                         </div>
-                        ${!s.master ? `<button onclick="excluirSenhaGestor('${s.id}')" class="flex-shrink-0 w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/30 text-red-400 flex items-center justify-center transition ml-2"><i class="fas fa-trash text-xs"></i></button>` : ''}
-                    </div>
-                `).join('');
+                    </div>`;
+                }).join('');
+                if (_editandoSenhaId) setTimeout(() => { const el = document.getElementById('edit-senha-nome'); if (el) el.focus(); }, 30);
             } catch(e) { console.error('renderSenhasGestor', e); }
         }
 
+        async function toggleMasterGestor(id) {
+            try {
+                const snap   = await configRef.get();
+                const senhas = (snap.exists && snap.data().senhasGestor) ? snap.data().senhasGestor : [];
+                const entry  = senhas.find(s => s.id === id);
+                if (!entry || entry.original || entry.nome.trim().toLowerCase() === 'admin') return;
+                const atualizadas = senhas.map(s => s.id === id ? { ...s, master: !s.master } : s);
+                await configRef.set({ senhasGestor: atualizadas }, { merge: true });
+                renderSenhasGestor();
+            } catch(e) { alert('Erro ao atualizar: ' + e.message); }
+        }
+
+        function abrirEditarSenhaGestor(id) {
+            _editandoSenhaId = id;
+            document.getElementById('form-nova-senha-gestor').classList.add('hidden');
+            document.getElementById('btn-add-senha-gestor').classList.remove('hidden');
+            renderSenhasGestor();
+        }
+
+        function fecharEditarSenhaGestor() {
+            _editandoSenhaId = null;
+            renderSenhasGestor();
+        }
+
+        async function salvarEdicaoSenhaGestor(id) {
+            const nome  = document.getElementById('edit-senha-nome').value.trim();
+            const nova  = document.getElementById('edit-senha-nova').value;
+            const conf  = document.getElementById('edit-senha-confirmar').value;
+            const erroEl  = document.getElementById('edit-senha-erro');
+            const erroTxt = document.getElementById('edit-senha-erro-txt');
+            erroEl.classList.add('hidden');
+            if (!nome)                      { erroTxt.textContent = 'Informe o nome.'; erroEl.classList.remove('hidden'); return; }
+            if (nova && nova.length < 4)    { erroTxt.textContent = 'Senha deve ter ao menos 4 caracteres.'; erroEl.classList.remove('hidden'); return; }
+            if (nova && nova !== conf)      { erroTxt.textContent = 'As senhas não coincidem.'; erroEl.classList.remove('hidden'); return; }
+            try {
+                const snap  = await configRef.get();
+                const senhas = (snap.exists && snap.data().senhasGestor) ? snap.data().senhasGestor : [];
+                const atualizadas = senhas.map(s => s.id === id ? { ...s, nome, ...(nova ? { senha: nova } : {}) } : s);
+                await configRef.set({ senhasGestor: atualizadas }, { merge: true });
+                _editandoSenhaId = null;
+                renderSenhasGestor();
+            } catch(e) {
+                erroTxt.textContent = 'Erro ao salvar: ' + e.message;
+                erroEl.classList.remove('hidden');
+            }
+        }
+
         function abrirFormNovaSenhaGestor() {
+            _editandoSenhaId = null;
             document.getElementById('form-nova-senha-gestor').classList.remove('hidden');
             document.getElementById('btn-add-senha-gestor').classList.add('hidden');
             document.getElementById('nova-senha-nome').value = '';
             document.getElementById('nova-senha-valor').value = '';
             document.getElementById('nova-senha-confirmar').value = '';
             document.getElementById('nova-senha-erro').classList.add('hidden');
+            renderSenhasGestor();
             setTimeout(() => document.getElementById('nova-senha-nome').focus(), 50);
         }
 
@@ -2211,4 +2292,5 @@ service cloud.firestore {
         };
     </script>
 </body>
+<script src="https://cdn.jsdelivr.net/gh/davicjc/FooterDavicjc@main/footer_cjc.js"></script>
 </html>
