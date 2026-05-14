@@ -365,6 +365,37 @@
         </div>
     </div>
 
+    <!-- MODAL DETALHES ENCERRAMENTO OS — TÉCNICO -->
+    <div id="modal-detalhe-os-tec" class="fixed inset-0 z-50 bg-slate-900 hidden flex-col animate-fade">
+        <header class="p-4 bg-slate-800 flex items-center gap-3 border-b border-slate-700 sticky top-0">
+            <button onclick="fecharDetalhesOSTec()" class="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center"><i class="fas fa-arrow-left"></i></button>
+            <div class="flex-1">
+                <h3 class="font-bold" id="dtec-titulo">OS Concluída</h3>
+                <p class="text-xs text-slate-400" id="dtec-encerrado"></p>
+            </div>
+        </header>
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            <div class="glass-card p-4 rounded-xl">
+                <p class="text-xs text-slate-400 uppercase font-bold mb-1">Cliente</p>
+                <p class="text-sm font-bold mb-3" id="dtec-cliente"></p>
+                <p class="text-xs text-slate-400 uppercase font-bold mb-1">Endereço</p>
+                <p class="text-sm mb-3" id="dtec-ponto"></p>
+                <p class="text-xs text-slate-400 uppercase font-bold mb-1">Falha</p>
+                <p class="text-sm" id="dtec-falha"></p>
+            </div>
+            <div class="glass-card p-4 rounded-xl">
+                <p class="text-xs text-slate-400 uppercase font-bold mb-2"><i class="fas fa-tasks text-emerald-400 mr-1"></i>Resumo do Reparo</p>
+                <p class="text-sm" id="dtec-notas"></p>
+            </div>
+            <div class="glass-card p-4 rounded-xl" id="dtec-assinatura-bloco">
+                <p class="text-xs text-slate-400 uppercase font-bold mb-2"><i class="fas fa-signature text-amber-400 mr-1"></i>Assinatura do Cliente</p>
+                <div class="bg-slate-100 rounded-lg p-2 inline-block">
+                    <img id="dtec-assinatura-img" src="" class="max-h-28 rounded" alt="Assinatura">
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL AGENDA COMPLETA — TÉCNICO -->
     <div id="modal-agenda-tec" class="fixed inset-0 z-50 bg-slate-900 hidden flex-col animate-fade">
         <header class="p-4 bg-slate-800 flex items-center gap-3 border-b border-slate-700 sticky top-0">
@@ -372,6 +403,35 @@
             <h3 class="font-bold flex-1">Minha Agenda Completa</h3>
         </header>
         <div class="flex-1 overflow-y-auto p-4" id="agenda-tec-conteudo"></div>
+    </div>
+
+    <!-- MODAL EDITAR TÉCNICO -->
+    <div id="modal-editar-tec" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4" onclick="if(event.target===this)fecharEditarTec()">
+        <div class="glass-panel rounded-2xl w-full max-w-sm">
+            <div class="p-5 border-b border-slate-700 flex items-center justify-between">
+                <h3 class="font-bold">Editar Técnico</h3>
+                <button onclick="fecharEditarTec()" class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-5 space-y-3">
+                <input type="hidden" id="edit-tec-id">
+                <div>
+                    <label class="text-xs text-slate-400 mb-1 block">Nome</label>
+                    <input type="text" id="edit-tec-nome" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 mb-1 block">Função / Equipe</label>
+                    <input type="text" id="edit-tec-funcao" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 mb-1 block">Nova senha (deixe vazio para manter atual)</label>
+                    <input type="password" id="edit-tec-senha" placeholder="••••••" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button onclick="fecharEditarTec()" class="flex-1 py-2 rounded-lg bg-slate-700 text-sm font-bold">Cancelar</button>
+                    <button onclick="salvarEditarTec()" class="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-bold transition">Salvar</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL AGENDA COMPLETA — ADMIN -->
@@ -568,16 +628,20 @@ service cloud.firestore {
 
         // ── LISTENERS TEMPO REAL ──────────────────────────────────
         let _listenersAtivos = false;
+        let _unsubTecnicos = null, _unsubOSS = null;
+
         function iniciarListeners() {
-            if (!_FB_OK || _listenersAtivos) return;
+            if (!_FB_OK) return;
+            if (_unsubTecnicos) _unsubTecnicos();
+            if (_unsubOSS)      _unsubOSS();
             _listenersAtivos = true;
 
-            colTecnicos.orderBy('criadoEm').onSnapshot(snap => {
+            _unsubTecnicos = colTecnicos.orderBy('criadoEm').onSnapshot(snap => {
                 state.tecnicos = snap.docs.map(d => d.data());
                 _onDadosAtualizados();
             }, err => console.error('[Firestore/tecnicos]', err));
 
-            colOSS.orderBy('criadoEm').onSnapshot(snap => {
+            _unsubOSS = colOSS.orderBy('criadoEm').onSnapshot(snap => {
                 state.oss = snap.docs.map(d => d.data());
                 _onDadosAtualizados();
                 document.getElementById('loading-firebase').classList.add('hidden');
@@ -748,6 +812,10 @@ service cloud.firestore {
             state.usuarioLogado = null;
             salvarSessao();
             document.getElementById('tech-login-select').classList.add('hidden');
+            document.getElementById('tech-senha-check').classList.add('hidden');
+            document.getElementById('tech-list-login').classList.remove('hidden');
+            _tecSelecionadoId = null;
+            iniciarListeners();
             showView('view-login');
         }
 
@@ -890,18 +958,40 @@ service cloud.firestore {
             }
 
             const p = document.getElementById('painel-atribuicao');
+            const statusLabels = { aberta: 'Aberta', atribuida: 'Atribuída', fechada: 'Concluída' };
+            const statusCores  = { aberta: 'text-amber-400', atribuida: 'text-blue-400', fechada: 'text-emerald-400' };
             p.innerHTML = `
-                <div class="flex justify-between items-start border-b border-slate-700 pb-4 mb-4">
-                    <div>
-                        <h3 class="font-black text-xl text-indigo-400">#${os.id} - ${os.cliente}</h3>
-                        <p class="text-sm text-slate-300"><i class="fas fa-map-marker-alt text-rose-400 mr-1"></i> ${os.ponto}</p>
-                        <p class="text-xs text-slate-400 mt-1">${os.falha}</p>
+                <div class="border-b border-slate-700 pb-4 mb-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h3 class="font-black text-xl text-indigo-400">#${os.id} - ${os.cliente}</h3>
+                            <p class="text-sm text-slate-300"><i class="fas fa-map-marker-alt text-rose-400 mr-1"></i> ${os.ponto}</p>
+                            <p class="text-xs text-slate-400 mt-1">${os.falha}</p>
+                        </div>
+                        <button onclick="deletarOS(${os.id})" class="bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded flex items-center gap-2 text-xs font-bold hover:bg-red-500 hover:text-white transition flex-shrink-0 ml-2"><i class="fas fa-trash"></i> Apagar</button>
                     </div>
-                    ${os.status !== 'fechada' ? `<button onclick="fecharOSGestor(${os.id})" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded flex items-center gap-2 text-xs font-bold hover:bg-emerald-500 hover:text-white transition"><i class="fas fa-check"></i> Encerrar OS</button>` : ''}
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <span class="text-xs text-slate-500 font-bold uppercase">Status:</span>
+                        ${['aberta','atribuida','fechada'].map(s => `
+                            <button onclick="mudarStatusOS(${os.id},'${s}')" class="px-3 py-1 rounded-full text-xs font-bold border transition ${os.status === s ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}">${statusLabels[s]}</button>
+                        `).join('')}
+                    </div>
                 </div>
 
                 ${os.status === 'fechada'
-                    ? `<div class="bg-emerald-500/20 text-emerald-400 p-3 rounded-lg text-sm mb-4"><i class="fas fa-check-circle mr-2"></i>OS Concluída. Notas: ${os.notasExecucao || 'N/A'}</div>`
+                    ? `<div class="space-y-3 mb-4">
+                        <div class="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                            <p class="text-xs font-bold text-emerald-400 uppercase mb-2"><i class="fas fa-check-circle mr-1"></i> OS Concluída</p>
+                            ${os.encerradoEm ? `<p class="text-xs text-slate-400 mb-2"><i class="fas fa-clock mr-1"></i> ${os.encerradoEm}</p>` : ''}
+                            <p class="text-xs text-slate-400 font-bold uppercase mb-1">Resumo do Reparo</p>
+                            <p class="text-sm text-slate-200 mb-3">${os.notasExecucao || 'N/A'}</p>
+                            ${os.assinaturaBase64 ? `
+                            <p class="text-xs text-slate-400 font-bold uppercase mb-1">Assinatura do Cliente</p>
+                            <div class="bg-slate-100 rounded-lg p-2 inline-block">
+                                <img src="${os.assinaturaBase64}" class="max-h-24 rounded" alt="Assinatura">
+                            </div>` : '<p class="text-xs text-slate-500">Sem assinatura registrada.</p>'}
+                        </div>
+                    </div>`
                     : `
                 <h4 class="font-bold text-sm mb-3">1. Selecione os Técnicos</h4>
                 <div class="flex flex-wrap gap-2 mb-6" id="wrap-tecs-atrib">
@@ -979,6 +1069,32 @@ service cloud.firestore {
             }
         }
 
+        async function deletarOS(osId) {
+            if (!confirm(`Apagar OS #${osId} permanentemente? Essa ação não pode ser desfeita.`)) return;
+            try {
+                await colOSS.doc(String(osId)).delete();
+                document.getElementById('painel-atribuicao').innerHTML = '<p class="text-slate-400 text-sm text-center mt-8">Selecione uma OS ao lado.</p>';
+                filtrarFilaOS(filtroOSAtual);
+            } catch(err) {
+                alert('Erro ao apagar OS: ' + err.message);
+            }
+        }
+
+        async function mudarStatusOS(osId, novoStatus) {
+            const os = state.oss.find(o => o.id === osId);
+            if (!os || os.status === novoStatus) return;
+            const prevStatus = os.status;
+            os.status = novoStatus;
+            try {
+                await _updateOS(osId, { status: novoStatus });
+                abrirPainelAtribuicao(osId);
+                filtrarFilaOS(filtroOSAtual);
+            } catch(err) {
+                os.status = prevStatus;
+                alert('Erro ao alterar status: ' + err.message);
+            }
+        }
+
         function renderMapaOSs() {
             if (!mapa || !markerGroup) return;
             markerGroup.clearLayers();
@@ -1027,9 +1143,17 @@ service cloud.firestore {
                             <h4 class="font-bold leading-none truncate">${t.nome}</h4>
                             <span class="text-xs text-slate-400">${t.funcao}</span>
                         </div>
-                        <button onclick="abrirAgendaAdm(${t.id})" class="flex-shrink-0 text-xs bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-lg border border-indigo-500/30 hover:bg-indigo-500/30 transition whitespace-nowrap">
-                            <i class="fas fa-calendar-alt mr-1"></i>${totalAgendadas} OS
-                        </button>
+                        <div class="flex gap-1 flex-shrink-0">
+                            <button onclick="abrirAgendaAdm(${t.id})" class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-lg border border-indigo-500/30 hover:bg-indigo-500/30 transition whitespace-nowrap" title="Ver agenda completa">
+                                <i class="fas fa-calendar-alt mr-1"></i>${totalAgendadas}
+                            </button>
+                            <button onclick="abrirEditarTec(${t.id})" class="text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded-lg border border-amber-500/30 hover:bg-amber-500/30 transition" title="Editar técnico">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button onclick="deletarTecnico(${t.id})" class="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-lg border border-red-500/30 hover:bg-red-500 hover:text-white transition" title="Apagar técnico">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="border-t border-slate-700 pt-3">
                         <p class="text-xs font-bold text-slate-500 uppercase mb-2">${_labelDia(diaFiltroAdmin)} (${osDia.length})</p>
@@ -1047,6 +1171,52 @@ service cloud.firestore {
                     </div>
                 </div>`;
             }).join('');
+        }
+
+        // ── GESTÃO DE TÉCNICOS ────────────────────────────────────
+        async function deletarTecnico(tecId) {
+            const tec = state.tecnicos.find(t => t.id === tecId);
+            if (!tec) return;
+            if (!confirm(`Apagar técnico "${tec.nome}" permanentemente?`)) return;
+            try {
+                await colTecnicos.doc(String(tecId)).delete();
+            } catch(err) {
+                alert('Erro ao apagar técnico: ' + err.message);
+            }
+        }
+
+        function abrirEditarTec(tecId) {
+            const tec = state.tecnicos.find(t => t.id === tecId);
+            if (!tec) return;
+            document.getElementById('edit-tec-id').value    = tec.id;
+            document.getElementById('edit-tec-nome').value  = tec.nome;
+            document.getElementById('edit-tec-funcao').value = tec.funcao;
+            document.getElementById('edit-tec-senha').value = '';
+            const modal = document.getElementById('modal-editar-tec');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function fecharEditarTec() {
+            const modal = document.getElementById('modal-editar-tec');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function salvarEditarTec() {
+            const id     = parseInt(document.getElementById('edit-tec-id').value);
+            const nome   = document.getElementById('edit-tec-nome').value.trim();
+            const funcao = document.getElementById('edit-tec-funcao').value.trim();
+            const senha  = document.getElementById('edit-tec-senha').value.trim();
+            if (!nome || !funcao) return alert('Nome e função são obrigatórios.');
+            const updates = { nome, funcao };
+            if (senha) updates.senha = senha;
+            try {
+                await colTecnicos.doc(String(id)).update(updates);
+                fecharEditarTec();
+            } catch(err) {
+                alert('Erro ao salvar: ' + err.message);
+            }
         }
 
         // ── MODAIS DE AGENDA ──────────────────────────────────────
@@ -1190,12 +1360,42 @@ service cloud.firestore {
                     </div>
                     <div class="pl-2">
                         ${isConcluida
-                            ? `<div class="w-full text-center py-2 bg-emerald-500/10 text-emerald-500 font-bold text-xs rounded-lg border border-emerald-500/20"><i class="fas fa-check-circle mr-1"></i> Concluído</div>`
+                            ? `<button onclick="verDetalhesOSTec(${os.id})" class="w-full text-left py-2 px-3 bg-emerald-500/10 text-emerald-500 font-bold text-xs rounded-lg border border-emerald-500/20 flex items-center justify-between">
+                                <span><i class="fas fa-check-circle mr-1"></i> Concluído</span>
+                                <i class="fas fa-chevron-right text-emerald-600"></i>
+                               </button>`
                             : `<button onclick="abrirExecucao(${os.id})" class="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg text-sm transition active:scale-95"><i class="fas fa-play mr-1"></i> Iniciar Atendimento</button>`
                         }
                     </div>
                 </div>`;
             }).join('');
+        }
+
+        function verDetalhesOSTec(id) {
+            const os = state.oss.find(o => o.id === id);
+            if (!os) return;
+            document.getElementById('dtec-titulo').textContent     = `OS #${os.id} — ${os.cliente}`;
+            document.getElementById('dtec-encerrado').textContent  = os.encerradoEm ? `Encerrada em: ${os.encerradoEm}` : 'OS concluída';
+            document.getElementById('dtec-cliente').textContent    = os.cliente;
+            document.getElementById('dtec-ponto').textContent      = os.ponto;
+            document.getElementById('dtec-falha').textContent      = os.falha;
+            document.getElementById('dtec-notas').textContent      = os.notasExecucao || 'Sem notas registradas.';
+            const blocoAss = document.getElementById('dtec-assinatura-bloco');
+            if (os.assinaturaBase64) {
+                document.getElementById('dtec-assinatura-img').src = os.assinaturaBase64;
+                blocoAss.classList.remove('hidden');
+            } else {
+                blocoAss.classList.add('hidden');
+            }
+            const modal = document.getElementById('modal-detalhe-os-tec');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function fecharDetalhesOSTec() {
+            const modal = document.getElementById('modal-detalhe-os-tec');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }
 
         function abrirExecucao(id) {
@@ -1236,15 +1436,21 @@ service cloud.firestore {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Salvando...';
 
+            const assinaturaBase64 = canvas ? canvas.toDataURL('image/png') : null;
+            const encerradoEm = new Date().toLocaleString('pt-BR');
+
             const os = state.oss.find(o => o.id === id);
-            if (os) { os.status = 'fechada'; os.notasExecucao = notas; }
+            if (os) { os.status = 'fechada'; os.notasExecucao = notas; os.assinaturaBase64 = assinaturaBase64; os.encerradoEm = encerradoEm; }
+
+            const updates = { status: 'fechada', notasExecucao: notas, encerradoEm };
+            if (assinaturaBase64) updates.assinaturaBase64 = assinaturaBase64;
 
             try {
-                await _updateOS(id, { status: 'fechada', notasExecucao: notas });
+                await _updateOS(id, updates);
                 fecharModalExec();
                 renderTecAppLista();
             } catch(err) {
-                if (os) { os.status = 'atribuida'; os.notasExecucao = null; }
+                if (os) { os.status = 'atribuida'; os.notasExecucao = null; os.assinaturaBase64 = null; os.encerradoEm = null; }
                 alert('Erro ao salvar: ' + err.message);
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-check-circle"></i> Encerrar OS';
