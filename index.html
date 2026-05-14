@@ -386,13 +386,47 @@
                 </div>
             </header>
             <div class="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
-                <div class="glass-card p-4 rounded-xl border-l-4 border-l-indigo-500">
-                    <p class="text-xs text-slate-400 uppercase font-bold mb-1">Falha Relatada</p>
-                    <p class="text-sm font-medium mb-3" id="exec-falha"></p>
-                    <p class="text-xs text-slate-400 uppercase font-bold mb-1">Endereço</p>
-                    <p class="text-sm font-medium mb-3" id="exec-endereco"></p>
-                    <p class="text-xs text-slate-400 uppercase font-bold mb-1">Contato</p>
-                    <p class="text-sm font-medium" id="exec-telefone"></p>
+                <div class="glass-card p-4 rounded-xl border-l-4 border-l-indigo-500 space-y-3 text-sm">
+                    <div id="exec-row-codigo" class="hidden">
+                        <p class="text-xs text-slate-400 uppercase font-bold mb-0.5">Código HubSoft</p>
+                        <p class="font-mono font-bold text-indigo-300" id="exec-codigo"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 uppercase font-bold mb-0.5">Cliente HubSoft</p>
+                        <p class="font-bold" id="exec-cliente-info"></p>
+                    </div>
+                    <div id="exec-row-ponto" class="hidden">
+                        <p class="text-xs text-slate-400 uppercase font-bold mb-0.5">Ponto HubSoft</p>
+                        <p class="font-medium text-slate-200" id="exec-ponto"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 uppercase font-bold mb-0.5">Falha Relatada</p>
+                        <p class="font-medium text-slate-200 leading-relaxed" id="exec-falha"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 uppercase font-bold mb-0.5">Telefone</p>
+                        <p class="font-medium" id="exec-telefone"></p>
+                    </div>
+                    <div id="exec-row-disp" class="hidden">
+                        <p class="text-xs text-slate-400 uppercase font-bold mb-0.5">Disponibilidade</p>
+                        <p class="font-medium text-slate-200" id="exec-disponibilidade"></p>
+                    </div>
+                    <div id="exec-row-resp" class="hidden">
+                        <p class="text-xs text-slate-400 uppercase font-bold mb-0.5">Responsável pelo Local</p>
+                        <p class="font-medium text-slate-200" id="exec-responsavel"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 uppercase font-bold mb-0.5">Local (Endereço)</p>
+                        <p class="font-medium text-slate-200" id="exec-endereco"></p>
+                    </div>
+                    <div id="exec-row-hub" class="hidden">
+                        <p class="text-xs text-slate-400 uppercase font-bold mb-0.5">Protocolo HubSoft</p>
+                        <p class="font-mono text-slate-200" id="exec-protocolo-hub"></p>
+                    </div>
+                    <div id="exec-row-james" class="hidden">
+                        <p class="text-xs text-slate-400 uppercase font-bold mb-0.5">Protocolo James</p>
+                        <p class="font-mono text-slate-200" id="exec-protocolo-james"></p>
+                    </div>
                 </div>
 
                 <a href="#" id="exec-map-btn" target="_blank" class="w-full bg-blue-600/20 border border-blue-500/30 text-blue-400 py-3 rounded-xl flex items-center justify-center gap-2 font-bold transition hover:bg-blue-600/30"><i class="fas fa-map-marked-alt"></i> Abrir no Navegador GPS</a>
@@ -1862,19 +1896,42 @@ service cloud.firestore {
         function abrirExecucao(id) {
             const os = state.oss.find(o => o.id === id);
             if (!os) return;
-            document.getElementById('exec-os-id').value        = os.id;
-            document.getElementById('exec-cliente').textContent = os.cliente;
-            document.getElementById('exec-hora').textContent    = 'Agendado: ' + os.tratativa.hora;
-            document.getElementById('exec-falha').textContent   = os.falha;
-            document.getElementById('exec-endereco').textContent = os.local || os.ponto;
-            document.getElementById('exec-telefone').textContent = os.telefone;
-            document.getElementById('exec-notas').value = '';
+            document.getElementById('exec-os-id').value         = os.id;
+            document.getElementById('exec-cliente').textContent  = os.cliente;
+            document.getElementById('exec-hora').textContent     = 'Agendado: ' + (os.tratativa?.hora || '—');
 
-            if (os.coords) {
-                const q = encodeURIComponent(os.coords);
-                document.getElementById('exec-map-btn').href = `https://www.google.com/maps/search/?api=1&query=${q}`;
+            // popula campos do card de info
+            const set = (elId, val, rowId) => {
+                const el = document.getElementById(elId);
+                if (el) el.textContent = val || '—';
+                if (rowId) {
+                    const row = document.getElementById(rowId);
+                    if (row) row.classList.toggle('hidden', !val);
+                }
+            };
+
+            set('exec-cliente-info', os.cliente);
+            set('exec-falha',        os.falha);
+            set('exec-telefone',     os.telefone);
+            set('exec-endereco',     os.local || os.ponto || '—');
+            set('exec-codigo',       os.codigo,        'exec-row-codigo');
+            set('exec-ponto',        os.ponto,         'exec-row-ponto');
+            set('exec-disponibilidade', os.disponibilidade, 'exec-row-disp');
+            set('exec-responsavel',  os.responsavel,   'exec-row-resp');
+            set('exec-protocolo-hub',   os.protocoloHub,   'exec-row-hub');
+            set('exec-protocolo-james', os.protocoloJames, 'exec-row-james');
+
+            // link GPS
+            const mapBtn = document.getElementById('exec-map-btn');
+            const gpsQuery = os.coords || os.local || os.ponto;
+            if (gpsQuery) {
+                mapBtn.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(gpsQuery)}`;
+                mapBtn.classList.remove('hidden');
+            } else {
+                mapBtn.classList.add('hidden');
             }
 
+            document.getElementById('exec-notas').value = '';
             limparAssinatura();
             const modal = document.getElementById('modal-exec-os');
             modal.classList.remove('hidden');
