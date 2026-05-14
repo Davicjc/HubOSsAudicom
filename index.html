@@ -330,28 +330,25 @@
             </div>
 
             <!-- TAB: GESTÃO DE OS E MAPA -->
-            <div id="tab-os" class="tab-content animate-fade">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[75vh]">
-                    <!-- Lista Lateral -->
-                    <div class="glass-panel rounded-2xl flex flex-col overflow-hidden">
-                        <div class="p-4 border-b border-slate-700/50 flex gap-2">
-                            <button onclick="filtrarFilaOS('aberta')" id="btn-fila-aberta" class="flex-1 py-1.5 rounded-lg bg-indigo-500 text-white text-xs font-bold">Abertas</button>
-                            <button onclick="filtrarFilaOS('atribuida')" id="btn-fila-atribuida" class="flex-1 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold">Atribuídas</button>
-                            <button onclick="filtrarFilaOS('fechada')" id="btn-fila-fechada" class="flex-1 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold">Concluídas</button>
-                        </div>
-                        <div id="lista-os-lateral" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
+            <div id="tab-os" class="tab-content animate-fade fixed inset-0 z-30">
+                <!-- Mapa: tela inteira -->
+                <div id="mapa-atribuicao" class="w-full h-full bg-slate-800"></div>
+
+                <!-- Painel flutuante ESQUERDA: Lista de OS -->
+                <div class="absolute top-4 left-4 z-10 flex flex-col overflow-hidden rounded-2xl glass-panel" style="width: 17rem; max-height: calc(100% - 2rem);">
+                    <div class="p-3 border-b border-slate-700/50 flex gap-2 flex-shrink-0">
+                        <button onclick="filtrarFilaOS('aberta')" id="btn-fila-aberta" class="flex-1 py-1.5 rounded-lg bg-indigo-500 text-white text-xs font-bold">Abertas</button>
+                        <button onclick="filtrarFilaOS('atribuida')" id="btn-fila-atribuida" class="flex-1 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold">Atribuídas</button>
+                        <button onclick="filtrarFilaOS('fechada')" id="btn-fila-fechada" class="flex-1 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold">Concluídas</button>
                     </div>
-                    <!-- Área Principal (Mapa ou Atribuição) -->
-                    <div class="lg:col-span-2 flex flex-col gap-4">
-                        <div class="glass-panel rounded-2xl p-2 flex-shrink-0 h-[45%] relative z-0">
-                            <div id="mapa-atribuicao" class="w-full h-full rounded-xl bg-slate-800"></div>
-                        </div>
-                        <div class="glass-panel rounded-2xl p-5 flex-1 overflow-y-auto" id="painel-atribuicao">
-                            <div class="text-center text-slate-500 mt-10">
-                                <i class="fas fa-hand-pointer text-4xl mb-3 opacity-50"></i>
-                                <p>Selecione uma OS na lista lateral para ver detalhes e atribuir técnicos.</p>
-                            </div>
-                        </div>
+                    <div id="lista-os-lateral" class="flex-1 overflow-y-auto p-3 space-y-3"></div>
+                </div>
+
+                <!-- Painel flutuante DIREITA TOPO: Detalhes / Atribuição -->
+                <div class="absolute top-4 right-4 z-10 rounded-2xl glass-panel p-5 overflow-y-auto" id="painel-atribuicao" style="width: 22rem; max-height: calc(60% - 1rem);">
+                    <div class="text-center text-slate-500 mt-10">
+                        <i class="fas fa-hand-pointer text-4xl mb-3 opacity-50"></i>
+                        <p>Selecione uma OS na lista lateral para ver detalhes e atribuir técnicos.</p>
                     </div>
                 </div>
             </div>
@@ -656,6 +653,25 @@
                 <button onclick="fecharAgendaAdm()" class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
             </div>
             <div class="flex-1 overflow-y-auto p-4" id="agenda-adm-conteudo"></div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFLITO DE HORÁRIO -->
+    <div id="modal-conflito" class="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="glass-panel rounded-2xl w-full max-w-sm">
+            <div class="p-5 border-b border-slate-700 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-exclamation-triangle text-amber-400"></i>
+                </div>
+                <h3 class="font-bold text-amber-400">Conflito de Horário</h3>
+            </div>
+            <div class="p-5">
+                <div id="modal-conflito-body" class="text-sm text-slate-300 space-y-2 mb-5 max-h-48 overflow-y-auto"></div>
+                <div class="flex gap-2">
+                    <button onclick="fecharModalConflito()" class="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-bold transition">Cancelar</button>
+                    <button onclick="confirmarAtribuicaoForçada()" class="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-sm font-bold transition"><i class="fas fa-calendar-check mr-1"></i>Agendar mesmo assim</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -968,6 +984,8 @@ service cloud.firestore {
             }
 
             if (id === 'tab-os') {
+                const navEl = document.querySelector('#view-gestor nav');
+                if (navEl) document.getElementById('tab-os').style.top = navEl.offsetHeight + 'px';
                 setTimeout(() => { if (mapa) mapa.invalidateSize(); else initMap(); renderMapaOSs(); }, 200);
             }
             if (id === 'tab-tecnicos') {
@@ -1577,18 +1595,20 @@ service cloud.firestore {
                 </div>
 
                 <h4 class="font-bold text-sm mb-3">2. Agendamento</h4>
-                <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="grid grid-cols-2 gap-4 mb-2">
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">Data</label>
-                        <input type="text" id="inp-atrib-data" value="${_atribData}" oninput="_atribData=this.value" placeholder="DD/MM/AAAA" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                        <input type="text" id="inp-atrib-data" value="${_atribData}" oninput="_atribData=this.value;_renderInfoDistancias(${os.id})" placeholder="DD/MM/AAAA" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500">
                     </div>
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">Hora</label>
-                        <input type="time" id="inp-atrib-hora" value="${_atribHora}" oninput="_atribHora=this.value" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                        <input type="time" id="inp-atrib-hora" value="${_atribHora}" oninput="_atribHora=this.value;_renderInfoDistancias(${os.id})" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm outline-none focus:border-indigo-500">
                     </div>
                 </div>
 
-                <button onclick="salvarAtribuicao(${os.id})" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/20 transition flex justify-center items-center gap-2">
+                <div id="info-distancias-atrib"></div>
+
+                <button onclick="salvarAtribuicao(${os.id})" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/20 transition flex justify-center items-center gap-2 mt-4">
                     <i class="fas fa-save"></i> Salvar Atribuição
                 </button>`
                 }
@@ -1598,6 +1618,9 @@ service cloud.firestore {
                 const [lat, lng] = os.coords.split(',').map(Number);
                 if (lat && lng) mapa.setView([lat, lng], 14);
             }
+
+            // Renderiza info de distâncias após montar o painel
+            setTimeout(() => _renderInfoDistancias(os.id), 0);
         }
 
         // ── VER MÃO / ROTA DO TÉCNICO ────────────────────────────
@@ -1845,15 +1868,141 @@ service cloud.firestore {
             abrirPainelAtribuicao(osId, true);
         }
 
-        async function salvarAtribuicao(osId) {
-            if (_atribTecs.length === 0) return alert('Selecione pelo menos 1 técnico');
-            const data = document.getElementById('inp-atrib-data').value;
-            const hora = document.getElementById('inp-atrib-hora').value;
-            const updates = { tecnicosIds: _atribTecs, tratativa: { data, hora }, status: 'atribuida' };
+        // ── HELPERS DE HORÁRIO E DISTÂNCIA ───────────────────────
+        function _horaTomins(h) {
+            if (!h) return 0;
+            const [hh, mm] = h.split(':').map(Number);
+            return hh * 60 + (mm || 0);
+        }
 
+        function _haversineKm(lat1, lng1, lat2, lng2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function _parseCoords(coordsStr) {
+            if (!coordsStr) return null;
+            const parts = coordsStr.trim().split(/[\s,]+/).map(Number);
+            if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
+            return { lat: parts[0], lng: parts[1] };
+        }
+
+        // Verifica conflitos de horário para os técnicos selecionados
+        function verificarConflitosAtribuicao(osId, tecIds, data, hora) {
+            const avisos = [];
+            const osMin = _horaTomins(hora);
+            for (const tecId of tecIds) {
+                const tec = state.tecnicos.find(t => t.id === tecId);
+                const nome = tec ? tec.nome : `Técnico #${tecId}`;
+                const ossDoTec = state.oss.filter(o =>
+                    o.id !== osId &&
+                    o.tecnicosIds && o.tecnicosIds.includes(tecId) &&
+                    o.tratativa && o.tratativa.data === data &&
+                    o.status !== 'fechada'
+                );
+                for (const o of ossDoTec) {
+                    const diff = Math.abs(_horaTomins(o.tratativa.hora) - osMin);
+                    const label = o.numero ? `OS ${o.numero}` : `OS #${o.id}`;
+                    if (diff < 60) {
+                        avisos.push(`⛔ <strong>${nome}</strong> já tem ${label} (${o.cliente}) agendada às <strong>${o.tratativa.hora}</strong> — conflito de horário (${diff} min de diferença).`);
+                    } else if (diff < 120) {
+                        avisos.push(`⚠️ <strong>${nome}</strong> tem ${label} (${o.cliente}) às <strong>${o.tratativa.hora}</strong> — apenas ${diff} min de intervalo.`);
+                    }
+                }
+            }
+            return avisos;
+        }
+
+        // Calcula distâncias da OS atual em relação às outras OSes do técnico no mesmo dia
+        function calcDistanciasOS(osId, tecId, data, hora) {
             const os = state.oss.find(o => o.id === osId);
-            if (os) Object.assign(os, updates);
+            const osCoords = _parseCoords(os?.coords);
+            if (!osCoords) return null;
 
+            const ossDoTec = state.oss
+                .filter(o => o.id !== osId &&
+                             o.tecnicosIds && o.tecnicosIds.includes(tecId) &&
+                             o.tratativa && o.tratativa.data === data &&
+                             o.coords)
+                .sort((a, b) => _horaTomins(a.tratativa.hora) - _horaTomins(b.tratativa.hora));
+
+            if (ossDoTec.length === 0) return null;
+
+            const osMin = _horaTomins(hora);
+            const prev = [...ossDoTec].reverse().find(o => _horaTomins(o.tratativa.hora) < osMin);
+            const next = ossDoTec.find(o => _horaTomins(o.tratativa.hora) > osMin);
+
+            const result = {};
+            if (prev) {
+                const c = _parseCoords(prev.coords);
+                if (c) {
+                    const km = _haversineKm(c.lat, c.lng, osCoords.lat, osCoords.lng);
+                    result.prev = { os: prev, km: km.toFixed(1), mins: Math.round(km / 50 * 60) };
+                }
+            }
+            if (next) {
+                const c = _parseCoords(next.coords);
+                if (c) {
+                    const km = _haversineKm(osCoords.lat, osCoords.lng, c.lat, c.lng);
+                    result.next = { os: next, km: km.toFixed(1), mins: Math.round(km / 50 * 60) };
+                }
+            }
+            return (result.prev || result.next) ? result : null;
+        }
+
+        function _renderInfoDistancias(osId) {
+            const el = document.getElementById('info-distancias-atrib');
+            if (!el) return;
+            const data = _atribData || '';
+            const hora = _atribHora || '00:00';
+            if (_atribTecs.length === 0 || !data) { el.innerHTML = ''; return; }
+
+            const tecId = _atribTecs[0];
+            const dist = calcDistanciasOS(osId, tecId, data, hora);
+            if (!dist) { el.innerHTML = ''; return; }
+
+            const tec = state.tecnicos.find(t => t.id === tecId);
+            const nomeTec = tec ? tec.nome : '';
+            let html = `<div class="mt-4 bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-xs space-y-2">
+                <p class="text-blue-400 font-bold uppercase tracking-wider text-[10px]"><i class="fas fa-route mr-1"></i>Deslocamento estimado (${nomeTec})</p>`;
+            if (dist.prev) {
+                const o = dist.prev.os;
+                html += `<div class="flex items-start gap-2 text-slate-300">
+                    <i class="fas fa-arrow-right text-slate-500 mt-0.5 flex-shrink-0"></i>
+                    <span><span class="text-slate-400">OS anterior</span> <strong>${o.numero || '#'+o.id}</strong> (${o.tratativa.hora}) → aqui: <strong class="text-blue-300">${dist.prev.km} km</strong> · ~${dist.prev.mins} min de carro</span>
+                </div>`;
+            }
+            if (dist.next) {
+                const o = dist.next.os;
+                html += `<div class="flex items-start gap-2 text-slate-300">
+                    <i class="fas fa-arrow-right text-slate-500 mt-0.5 flex-shrink-0"></i>
+                    <span>Aqui → <span class="text-slate-400">próxima OS</span> <strong>${o.numero || '#'+o.id}</strong> (${o.tratativa.hora}): <strong class="text-blue-300">${dist.next.km} km</strong> · ~${dist.next.mins} min de carro</span>
+                </div>`;
+            }
+            html += `<p class="text-slate-600 text-[9px]">* distância em linha reta, velocidade média 50 km/h</p></div>`;
+            el.innerHTML = html;
+        }
+
+        // Variáveis para atribuição forçada após confirmação
+        let _atribForçadaOsId = null, _atribForçadaUpdates = null, _atribForçadaOs = null;
+
+        function fecharModalConflito() {
+            const m = document.getElementById('modal-conflito');
+            m.classList.add('hidden'); m.classList.remove('flex');
+            _atribForçadaOsId = null; _atribForçadaUpdates = null; _atribForçadaOs = null;
+        }
+
+        async function confirmarAtribuicaoForçada() {
+            fecharModalConflito();
+            if (!_atribForçadaOsId) return;
+            await _executarSalvarAtribuicao(_atribForçadaOsId, _atribForçadaUpdates, _atribForçadaOs);
+        }
+
+        async function _executarSalvarAtribuicao(osId, updates, os) {
+            if (os) Object.assign(os, updates);
             try {
                 await _updateOS(osId, updates);
                 filtrarFilaOS('atribuida');
@@ -1863,6 +2012,29 @@ service cloud.firestore {
                 if (os) { os.status = 'aberta'; os.tecnicosIds = []; os.tratativa = null; }
                 alert('Erro ao salvar: ' + err.message);
             }
+        }
+
+        async function salvarAtribuicao(osId) {
+            if (_atribTecs.length === 0) return alert('Selecione pelo menos 1 técnico');
+            const data = document.getElementById('inp-atrib-data').value;
+            const hora = document.getElementById('inp-atrib-hora').value;
+            const updates = { tecnicosIds: _atribTecs, tratativa: { data, hora }, status: 'atribuida' };
+            const os = state.oss.find(o => o.id === osId);
+
+            // Verificar conflitos de horário
+            const avisos = verificarConflitosAtribuicao(osId, _atribTecs, data, hora);
+            if (avisos.length > 0) {
+                _atribForçadaOsId = osId;
+                _atribForçadaUpdates = updates;
+                _atribForçadaOs = os;
+                document.getElementById('modal-conflito-body').innerHTML =
+                    avisos.map(a => `<p class="bg-slate-800/60 rounded-lg px-3 py-2">${a}</p>`).join('');
+                const m = document.getElementById('modal-conflito');
+                m.classList.remove('hidden'); m.classList.add('flex');
+                return;
+            }
+
+            await _executarSalvarAtribuicao(osId, updates, os);
         }
 
         async function fecharOSGestor(osId) {
