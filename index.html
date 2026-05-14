@@ -283,11 +283,13 @@
                     <div class="lg:col-span-3 glass-panel rounded-2xl p-5">
                         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                             <h3 class="font-bold flex items-center gap-2 text-lg"><i class="fas fa-calendar-alt text-indigo-400"></i> Equipe e Agendas</h3>
-                            <div class="flex gap-2">
+                            <div class="flex flex-wrap gap-2">
                                 <button onclick="setDiaAdmin(-1)" id="dia-adm--1" class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Ontem</button>
                                 <button onclick="setDiaAdmin(0)"  id="dia-adm-0"  class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-indigo-500 bg-indigo-600 text-white">Hoje</button>
                                 <button onclick="setDiaAdmin(1)"  id="dia-adm-1"  class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Amanhã</button>
                                 <button onclick="setDiaAdmin(2)"  id="dia-adm-2"  class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Depois</button>
+                                <button onclick="document.getElementById('date-picker-adm').click()" id="dia-adm-custom" class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 flex items-center gap-1"><i class="fas fa-calendar-day"></i> Data</button>
+                                <input type="date" id="date-picker-adm" class="hidden" onchange="setDiaAdminCustom(this.value)">
                             </div>
                         </div>
                         <p id="adm-dia-label" class="text-xs text-slate-500 mb-3"></p>
@@ -321,6 +323,8 @@
                 <button onclick="setDiaTec(0)"  id="dia-tec-0"  class="tec-dia-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border border-indigo-500 bg-indigo-600 text-white">Hoje</button>
                 <button onclick="setDiaTec(1)"  id="dia-tec-1"  class="tec-dia-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Amanhã</button>
                 <button onclick="setDiaTec(2)"  id="dia-tec-2"  class="tec-dia-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Depois</button>
+                <button onclick="document.getElementById('date-picker-tec').click()" id="dia-tec-custom" class="tec-dia-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 flex items-center gap-1"><i class="fas fa-calendar-day"></i> Data</button>
+                <input type="date" id="date-picker-tec" class="hidden" onchange="setDiaTecCustom(this.value)">
                 <button onclick="abrirAgendaTec()" class="flex-shrink-0 ml-auto px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-500/40 bg-emerald-600/20 text-emerald-400"><i class="fas fa-calendar-alt mr-1"></i>Agenda</button>
             </div>
             <p id="tec-dia-label" class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 ml-1"></p>
@@ -540,6 +544,7 @@ service cloud.firestore {
         };
 
         // ── FILTRO DE DIA ─────────────────────────────────────────
+        // diaFiltroTec / diaFiltroAdmin: número (offset) ou string "DD/MM/YYYY" (data personalizada)
         let diaFiltroTec   = 0;
         let diaFiltroAdmin = 0;
 
@@ -548,19 +553,28 @@ service cloud.firestore {
             d.setDate(d.getDate() + offset);
             return d.toLocaleDateString('pt-BR');
         }
-        function _labelDia(offset) {
-            if (offset === -1) return 'Ontem';
-            if (offset === 0)  return 'Hoje';
-            if (offset === 1)  return 'Amanhã';
-            if (offset === 2)  return 'Depois de amanhã';
-            return _dataPorOffset(offset);
+        function _isoToPtBR(iso) {
+            const [y, m, d] = iso.split('-');
+            return `${d}/${m}/${y}`;
         }
-        function _ativarBtnDia(prefixo, offset) {
-            document.querySelectorAll('.' + prefixo).forEach(btn => {
+        function _resolverData(filtro) {
+            return typeof filtro === 'number' ? _dataPorOffset(filtro) : filtro;
+        }
+        function _labelDia(filtro) {
+            if (typeof filtro === 'string') return filtro;
+            if (filtro === -1) return 'Ontem';
+            if (filtro === 0)  return 'Hoje';
+            if (filtro === 1)  return 'Amanhã';
+            if (filtro === 2)  return 'Depois de amanhã';
+            return _dataPorOffset(filtro);
+        }
+
+        function _destacarBtnDia(classe, idAtivo) {
+            document.querySelectorAll('.' + classe).forEach(btn => {
                 btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-500');
                 btn.classList.add('bg-slate-800', 'text-slate-400', 'border-slate-700');
             });
-            const ativo = document.getElementById(prefixo.replace('-btn', '') + '-' + offset);
+            const ativo = document.getElementById(idAtivo);
             if (ativo) {
                 ativo.classList.remove('bg-slate-800', 'text-slate-400', 'border-slate-700');
                 ativo.classList.add('bg-indigo-600', 'text-white', 'border-indigo-500');
@@ -569,29 +583,27 @@ service cloud.firestore {
 
         function setDiaTec(offset) {
             diaFiltroTec = offset;
-            document.querySelectorAll('.tec-dia-btn').forEach(btn => {
-                btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-500');
-                btn.classList.add('bg-slate-800', 'text-slate-400', 'border-slate-700');
-            });
-            const ativo = document.getElementById('dia-tec-' + offset);
-            if (ativo) {
-                ativo.classList.remove('bg-slate-800', 'text-slate-400', 'border-slate-700');
-                ativo.classList.add('bg-indigo-600', 'text-white', 'border-indigo-500');
-            }
+            _destacarBtnDia('tec-dia-btn', 'dia-tec-' + offset);
+            renderTecAppLista();
+        }
+
+        function setDiaTecCustom(iso) {
+            if (!iso) return;
+            diaFiltroTec = _isoToPtBR(iso);
+            _destacarBtnDia('tec-dia-btn', 'dia-tec-custom');
             renderTecAppLista();
         }
 
         function setDiaAdmin(offset) {
             diaFiltroAdmin = offset;
-            document.querySelectorAll('.adm-dia-btn').forEach(btn => {
-                btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-500');
-                btn.classList.add('bg-slate-800', 'text-slate-400', 'border-slate-700');
-            });
-            const ativo = document.getElementById('dia-adm-' + offset);
-            if (ativo) {
-                ativo.classList.remove('bg-slate-800', 'text-slate-400', 'border-slate-700');
-                ativo.classList.add('bg-indigo-600', 'text-white', 'border-indigo-500');
-            }
+            _destacarBtnDia('adm-dia-btn', 'dia-adm-' + offset);
+            renderTecnicosCards();
+        }
+
+        function setDiaAdminCustom(iso) {
+            if (!iso) return;
+            diaFiltroAdmin = _isoToPtBR(iso);
+            _destacarBtnDia('adm-dia-btn', 'dia-adm-custom');
             renderTecnicosCards();
         }
 
@@ -1115,7 +1127,7 @@ service cloud.firestore {
         function renderTecnicosCards() {
             const cont = document.getElementById('lista-tecnicos-cards');
             if (!cont) return;
-            const diaStr = _dataPorOffset(diaFiltroAdmin);
+            const diaStr = _resolverData(diaFiltroAdmin);
             const labelEl = document.getElementById('adm-dia-label');
             if (labelEl) labelEl.textContent = `${_labelDia(diaFiltroAdmin)} — ${diaStr}`;
 
@@ -1324,7 +1336,7 @@ service cloud.firestore {
             }
 
             const tecId = state.usuarioLogado.id;
-            const diaStr = _dataPorOffset(diaFiltroTec);
+            const diaStr = _resolverData(diaFiltroTec);
             const labelEl = document.getElementById('tec-dia-label');
             if (labelEl) labelEl.textContent = `${_labelDia(diaFiltroTec)} — ${diaStr}`;
 
