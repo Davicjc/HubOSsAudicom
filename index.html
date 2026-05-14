@@ -135,7 +135,7 @@
             <p class="text-slate-400 text-sm mb-8">Sistema Unificado de Gestão de Campo</p>
 
             <div class="grid grid-cols-2 gap-4 mb-6">
-                <button onclick="loginGestor()" class="glass-card p-6 rounded-xl flex flex-col items-center gap-3">
+                <button onclick="mostrarLoginGestor()" class="glass-card p-6 rounded-xl flex flex-col items-center gap-3">
                     <div class="w-12 h-12 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center text-xl">
                         <i class="fas fa-chess-king"></i>
                     </div>
@@ -147,6 +147,44 @@
                     </div>
                     <span class="font-bold">Técnico</span>
                 </button>
+            </div>
+
+            <!-- Gestor password check -->
+            <div id="gestor-senha-check" class="hidden mt-4 text-left bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                <!-- Loading -->
+                <div id="gestor-login-loading" class="hidden text-center py-2">
+                    <i class="fas fa-spinner fa-spin text-indigo-400 mr-2"></i>
+                    <span class="text-xs text-slate-400">Carregando...</span>
+                </div>
+                <!-- Login normal -->
+                <div id="gestor-login-normal" class="hidden">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3"><i class="fas fa-chess-king text-indigo-400 mr-1"></i>Acesso do Gestor</p>
+                    <input type="password" id="gestor-senha-input" placeholder="Senha"
+                           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none mb-1"
+                           onkeydown="if(event.key==='Enter') confirmarSenhaGestor()">
+                    <p id="gestor-senha-erro" class="text-red-400 text-xs hidden mb-2"><i class="fas fa-exclamation-circle mr-1"></i>Senha incorreta</p>
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="cancelarLoginGestor()" class="flex-1 py-1.5 rounded-lg bg-slate-700 text-sm font-bold">Voltar</button>
+                        <button id="btn-entrar-gestor" onclick="confirmarSenhaGestor()" class="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-bold transition">Entrar</button>
+                    </div>
+                </div>
+                <!-- Primeiro acesso: criar senha master -->
+                <div id="gestor-login-setup" class="hidden">
+                    <p class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1"><i class="fas fa-star mr-1"></i>Primeiro Acesso — Criar Senha Master</p>
+                    <p class="text-xs text-slate-500 mb-3">Esta será a conta master, que pode criar e remover outros acessos.</p>
+                    <input type="text" id="gestor-setup-nome" placeholder="Seu nome *"
+                           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none mb-2">
+                    <input type="password" id="gestor-setup-senha" placeholder="Senha *"
+                           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none mb-2">
+                    <input type="password" id="gestor-setup-confirmar" placeholder="Confirmar senha *"
+                           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none mb-1"
+                           onkeydown="if(event.key==='Enter') criarSenhaMaster()">
+                    <p id="gestor-setup-erro" class="text-red-400 text-xs hidden mb-2"><i class="fas fa-exclamation-circle mr-1"></i><span id="gestor-setup-erro-txt"></span></p>
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="cancelarLoginGestor()" class="flex-1 py-1.5 rounded-lg bg-slate-700 text-sm font-bold">Voltar</button>
+                        <button id="btn-setup-gestor" onclick="criarSenhaMaster()" class="flex-1 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-sm font-bold transition">Criar e Entrar</button>
+                    </div>
+                </div>
             </div>
 
             <div id="tech-login-select" class="hidden text-left bg-slate-800/50 p-4 rounded-xl border border-slate-700">
@@ -326,6 +364,31 @@
                             <button id="btn-criar-tecnico" class="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded-lg font-bold text-sm transition"><i class="fas fa-check mr-1"></i> Adicionar</button>
                         </form>
                     </div>
+                    <!-- Senhas de Acesso (visível só para master) -->
+                    <div id="card-senhas-gestor" class="hidden glass-panel rounded-2xl p-5 h-fit mt-0 lg:mt-6">
+                        <h3 class="font-bold mb-3 flex items-center gap-2"><i class="fas fa-shield-halved text-indigo-400"></i> Acessos do Gestor</h3>
+                        <div id="lista-senhas-gestor" class="space-y-2 mb-3"></div>
+                        <button id="btn-add-senha-gestor" onclick="abrirFormNovaSenhaGestor()"
+                                class="w-full border border-dashed border-slate-600 hover:border-indigo-500 text-slate-400 hover:text-white py-2 rounded-lg text-sm font-bold transition">
+                            <i class="fas fa-plus mr-1"></i> Nova Senha
+                        </button>
+                        <!-- Formulário de cadastro -->
+                        <div id="form-nova-senha-gestor" class="hidden mt-3 border-t border-slate-700 pt-3 space-y-2">
+                            <input type="text" id="nova-senha-nome" placeholder="Nome do acesso *"
+                                   class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none">
+                            <input type="password" id="nova-senha-valor" placeholder="Senha *"
+                                   class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none">
+                            <input type="password" id="nova-senha-confirmar" placeholder="Confirmar senha *"
+                                   class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none"
+                                   onkeydown="if(event.key==='Enter') cadastrarNovaSenhaGestor()">
+                            <p id="nova-senha-erro" class="text-red-400 text-xs hidden"><i class="fas fa-exclamation-circle mr-1"></i><span id="nova-senha-erro-txt"></span></p>
+                            <div class="flex gap-2 pt-1">
+                                <button onclick="fecharFormNovaSenhaGestor()" class="flex-1 py-1.5 rounded-lg bg-slate-700 text-sm font-bold">Cancelar</button>
+                                <button onclick="cadastrarNovaSenhaGestor()" class="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-bold transition">Salvar</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Lista/Agenda -->
                     <div class="lg:col-span-3 glass-panel rounded-2xl p-5">
                         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -896,13 +959,182 @@ service cloud.firestore {
             if (id === 'tab-os') {
                 setTimeout(() => { if (mapa) mapa.invalidateSize(); else initMap(); renderMapaOSs(); }, 200);
             }
+            if (id === 'tab-tecnicos') {
+                renderSenhasGestor();
+            }
         }
 
-        // ── LOGIN ─────────────────────────────────────────────────
+        // ── LOGIN GESTOR ──────────────────────────────────────────
+        async function mostrarLoginGestor() {
+            document.getElementById('tech-login-select').classList.add('hidden');
+            const checkEl = document.getElementById('gestor-senha-check');
+            checkEl.classList.remove('hidden');
+            document.getElementById('gestor-login-normal').classList.add('hidden');
+            document.getElementById('gestor-login-setup').classList.add('hidden');
+            document.getElementById('gestor-login-loading').classList.remove('hidden');
+            try {
+                const snap = await configRef.get();
+                const senhas = (snap.exists && snap.data().senhasGestor) ? snap.data().senhasGestor : [];
+                document.getElementById('gestor-login-loading').classList.add('hidden');
+                if (senhas.length === 0) {
+                    document.getElementById('gestor-login-setup').classList.remove('hidden');
+                    setTimeout(() => document.getElementById('gestor-setup-nome').focus(), 50);
+                } else {
+                    document.getElementById('gestor-login-normal').classList.remove('hidden');
+                    document.getElementById('gestor-senha-input').value = '';
+                    document.getElementById('gestor-senha-erro').classList.add('hidden');
+                    const btn = document.getElementById('btn-entrar-gestor');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Entrar';
+                    setTimeout(() => document.getElementById('gestor-senha-input').focus(), 50);
+                }
+            } catch(e) {
+                document.getElementById('gestor-login-loading').classList.add('hidden');
+                document.getElementById('gestor-login-normal').classList.remove('hidden');
+                document.getElementById('gestor-senha-input').value = '';
+                document.getElementById('gestor-senha-erro').classList.add('hidden');
+            }
+        }
+
+        function cancelarLoginGestor() {
+            document.getElementById('gestor-senha-check').classList.add('hidden');
+        }
+
+        async function criarSenhaMaster() {
+            const nome  = document.getElementById('gestor-setup-nome').value.trim();
+            const senha = document.getElementById('gestor-setup-senha').value;
+            const conf  = document.getElementById('gestor-setup-confirmar').value;
+            const erroEl  = document.getElementById('gestor-setup-erro');
+            const erroTxt = document.getElementById('gestor-setup-erro-txt');
+            const btn     = document.getElementById('btn-setup-gestor');
+            erroEl.classList.add('hidden');
+            if (!nome)          { erroTxt.textContent = 'Informe seu nome.'; erroEl.classList.remove('hidden'); return; }
+            if (senha.length < 4) { erroTxt.textContent = 'Senha deve ter ao menos 4 caracteres.'; erroEl.classList.remove('hidden'); return; }
+            if (senha !== conf) { erroTxt.textContent = 'As senhas não coincidem.'; erroEl.classList.remove('hidden'); return; }
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Salvando...';
+            try {
+                const entrada = { id: Date.now().toString(), nome, senha, master: true };
+                await configRef.set({ senhasGestor: [entrada] }, { merge: true });
+                state.usuarioLogado = { tipo: 'gestor', master: true, nomeGestor: nome };
+                salvarSessao();
+                bootGestor();
+            } catch(e) {
+                erroTxt.textContent = 'Erro ao salvar: ' + e.message;
+                erroEl.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = 'Criar e Entrar';
+            }
+        }
+
+        async function confirmarSenhaGestor() {
+            const input  = document.getElementById('gestor-senha-input').value;
+            const erroEl = document.getElementById('gestor-senha-erro');
+            const btn    = document.getElementById('btn-entrar-gestor');
+            if (!input) return;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Verificando...';
+            try {
+                const snap   = await configRef.get();
+                const senhas = (snap.exists && snap.data().senhasGestor) ? snap.data().senhasGestor : [];
+                const match  = senhas.find(s => s.senha === input);
+                if (match) {
+                    erroEl.classList.add('hidden');
+                    state.usuarioLogado = { tipo: 'gestor', master: match.master === true, nomeGestor: match.nome };
+                    salvarSessao();
+                    bootGestor();
+                } else {
+                    erroEl.textContent = 'Senha incorreta';
+                    erroEl.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Entrar';
+                }
+            } catch(e) {
+                erroEl.textContent = 'Erro de conexão. Tente novamente.';
+                erroEl.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = 'Entrar';
+            }
+        }
+
         function loginGestor() {
-            state.usuarioLogado = { tipo: 'gestor' };
             salvarSessao();
             bootGestor();
+        }
+
+        // ── GESTÃO DE SENHAS (só master) ──────────────────────────
+        async function renderSenhasGestor() {
+            const card = document.getElementById('card-senhas-gestor');
+            if (!state.usuarioLogado || !state.usuarioLogado.master) { card.classList.add('hidden'); return; }
+            card.classList.remove('hidden');
+            try {
+                const snap   = await configRef.get();
+                const senhas = (snap.exists && snap.data().senhasGestor) ? snap.data().senhasGestor : [];
+                const lista  = document.getElementById('lista-senhas-gestor');
+                if (senhas.length === 0) {
+                    lista.innerHTML = '<p class="text-xs text-slate-500 text-center py-2">Nenhuma senha cadastrada.</p>';
+                    return;
+                }
+                lista.innerHTML = senhas.map(s => `
+                    <div class="flex items-center justify-between bg-slate-800/60 rounded-lg px-3 py-2 border border-slate-700">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="text-sm font-bold truncate">${s.nome}</span>
+                            ${s.master
+                                ? '<span class="flex-shrink-0 text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">MASTER</span>'
+                                : '<span class="flex-shrink-0 text-[10px] bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full font-bold">ADMIN</span>'}
+                        </div>
+                        ${!s.master ? `<button onclick="excluirSenhaGestor('${s.id}')" class="flex-shrink-0 w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/30 text-red-400 flex items-center justify-center transition ml-2"><i class="fas fa-trash text-xs"></i></button>` : ''}
+                    </div>
+                `).join('');
+            } catch(e) { console.error('renderSenhasGestor', e); }
+        }
+
+        function abrirFormNovaSenhaGestor() {
+            document.getElementById('form-nova-senha-gestor').classList.remove('hidden');
+            document.getElementById('btn-add-senha-gestor').classList.add('hidden');
+            document.getElementById('nova-senha-nome').value = '';
+            document.getElementById('nova-senha-valor').value = '';
+            document.getElementById('nova-senha-confirmar').value = '';
+            document.getElementById('nova-senha-erro').classList.add('hidden');
+            setTimeout(() => document.getElementById('nova-senha-nome').focus(), 50);
+        }
+
+        function fecharFormNovaSenhaGestor() {
+            document.getElementById('form-nova-senha-gestor').classList.add('hidden');
+            document.getElementById('btn-add-senha-gestor').classList.remove('hidden');
+        }
+
+        async function cadastrarNovaSenhaGestor() {
+            const nome  = document.getElementById('nova-senha-nome').value.trim();
+            const senha = document.getElementById('nova-senha-valor').value;
+            const conf  = document.getElementById('nova-senha-confirmar').value;
+            const erroEl  = document.getElementById('nova-senha-erro');
+            const erroTxt = document.getElementById('nova-senha-erro-txt');
+            erroEl.classList.add('hidden');
+            if (!nome)          { erroTxt.textContent = 'Informe o nome.'; erroEl.classList.remove('hidden'); return; }
+            if (senha.length < 4) { erroTxt.textContent = 'Senha deve ter ao menos 4 caracteres.'; erroEl.classList.remove('hidden'); return; }
+            if (senha !== conf) { erroTxt.textContent = 'As senhas não coincidem.'; erroEl.classList.remove('hidden'); return; }
+            try {
+                const snap   = await configRef.get();
+                const senhas = (snap.exists && snap.data().senhasGestor) ? snap.data().senhasGestor : [];
+                const nova   = { id: Date.now().toString(), nome, senha, master: false };
+                await configRef.set({ senhasGestor: [...senhas, nova] }, { merge: true });
+                fecharFormNovaSenhaGestor();
+                renderSenhasGestor();
+            } catch(e) {
+                erroTxt.textContent = 'Erro ao salvar: ' + e.message;
+                erroEl.classList.remove('hidden');
+            }
+        }
+
+        async function excluirSenhaGestor(id) {
+            if (!confirm('Remover este acesso de gestor?')) return;
+            try {
+                const snap   = await configRef.get();
+                const senhas = (snap.exists && snap.data().senhasGestor) ? snap.data().senhasGestor : [];
+                await configRef.set({ senhasGestor: senhas.filter(s => s.id !== id) }, { merge: true });
+                renderSenhasGestor();
+            } catch(e) { alert('Erro ao remover: ' + e.message); }
         }
 
         function _renderLoginTechList() {
@@ -921,6 +1153,7 @@ service cloud.firestore {
         }
 
         function mostrarLoginTecnico() {
+            document.getElementById('gestor-senha-check').classList.add('hidden');
             document.getElementById('tech-login-select').classList.remove('hidden');
             _renderLoginTechList();
         }
@@ -972,6 +1205,7 @@ service cloud.firestore {
         function logout() {
             state.usuarioLogado = null;
             salvarSessao();
+            document.getElementById('gestor-senha-check').classList.add('hidden');
             document.getElementById('tech-login-select').classList.add('hidden');
             document.getElementById('tech-senha-check').classList.add('hidden');
             document.getElementById('tech-list-login').classList.remove('hidden');
@@ -987,6 +1221,7 @@ service cloud.firestore {
             atualizarDashboard();
             renderFilaLateral('aberta');
             renderTecnicosCards();
+            renderSenhasGestor();
         }
 
         function atualizarDashboard() {
