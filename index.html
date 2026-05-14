@@ -171,9 +171,13 @@
                 <!-- Primeiro acesso: criar senha master -->
                 <div id="gestor-login-setup" class="hidden">
                     <p class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1"><i class="fas fa-star mr-1"></i>Primeiro Acesso — Criar Senha Master</p>
-                    <p class="text-xs text-slate-500 mb-3">Esta será a conta master, que pode criar e remover outros acessos.</p>
-                    <input type="text" id="gestor-setup-nome" placeholder="Seu nome *"
-                           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none mb-2">
+                    <p class="text-xs text-slate-500 mb-3">Esta será a conta <strong class="text-amber-400">Super Admin permanente</strong>. O nome é fixo e não pode ser alterado pela interface — somente via banco de dados diretamente.</p>
+                    <!-- Nome fixo: sempre "admin" -->
+                    <div class="w-full bg-slate-900 border border-amber-500/40 rounded-lg px-3 py-2 text-sm mb-2 flex items-center justify-between">
+                        <span class="font-bold text-amber-300">admin</span>
+                        <span class="text-[10px] text-slate-500 italic">nome fixo — não editável</span>
+                    </div>
+                    <input type="hidden" id="gestor-setup-nome" value="admin">
                     <input type="password" id="gestor-setup-senha" placeholder="Senha *"
                            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none mb-2">
                     <input type="password" id="gestor-setup-confirmar" placeholder="Confirmar senha *"
@@ -228,6 +232,7 @@
                 <button onclick="switchTab('tab-dashboard')" id="btn-tab-dashboard" class="px-4 py-3 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400 whitespace-nowrap"><i class="fas fa-chart-pie mr-2"></i>Dashboard</button>
                 <button onclick="switchTab('tab-os')" id="btn-tab-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-list-check mr-2"></i>Gestão de OS & Mapa</button>
                 <button onclick="switchTab('tab-tecnicos')" id="btn-tab-tecnicos" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-users mr-2"></i>Técnicos & Agenda</button>
+                <button onclick="switchTab('tab-adm')" id="btn-tab-adm" class="hidden px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-amber-400 hover:text-amber-300 whitespace-nowrap"><i class="fas fa-shield-halved mr-2"></i>ADM</button>
             </div>
         </nav>
 
@@ -353,8 +358,30 @@
 
             <!-- TAB: TÉCNICOS E AGENDA -->
             <div id="tab-tecnicos" class="tab-content animate-fade">
-                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <!-- Cadastro Tec -->
+                <div class="grid grid-cols-1 gap-6">
+
+                    <!-- Lista/Agenda (full width) -->
+                    <div class="glass-panel rounded-2xl p-5">
+                        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                            <h3 class="font-bold flex items-center gap-2 text-lg"><i class="fas fa-calendar-alt text-indigo-400"></i> Equipe e Agendas</h3>
+                            <div class="flex flex-wrap gap-2">
+                                <button onclick="setDiaAdmin(-1)" id="dia-adm--1" class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Ontem</button>
+                                <button onclick="setDiaAdmin(0)"  id="dia-adm-0"  class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-indigo-500 bg-indigo-600 text-white">Hoje</button>
+                                <button onclick="setDiaAdmin(1)"  id="dia-adm-1"  class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Amanhã</button>
+                                <button onclick="setDiaAdmin(2)"  id="dia-adm-2"  class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Depois</button>
+                                <button onclick="abrirDataCustom('adm')" id="dia-adm-custom" class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 flex items-center gap-1"><i class="fas fa-calendar-day"></i> Data</button>
+                            </div>
+                        </div>
+                        <p id="adm-dia-label" class="text-xs text-slate-500 mb-3"></p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="lista-tecnicos-cards"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: ADM (visível só para super admin) -->
+            <div id="tab-adm" class="tab-content animate-fade">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Novo Técnico -->
                     <div id="card-novo-tecnico" class="glass-panel rounded-2xl p-5 h-fit">
                         <h3 class="font-bold mb-4 flex items-center gap-2"><i class="fas fa-user-plus text-indigo-400"></i> Novo Técnico</h3>
                         <form onsubmit="criarTecnico(event)" class="space-y-3">
@@ -364,8 +391,8 @@
                             <button id="btn-criar-tecnico" class="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded-lg font-bold text-sm transition"><i class="fas fa-check mr-1"></i> Adicionar</button>
                         </form>
                     </div>
-                    <!-- Senhas de Acesso (visível só para master) -->
-                    <div id="card-senhas-gestor" class="hidden glass-panel rounded-2xl p-5 h-fit mt-0 lg:mt-6">
+                    <!-- Acessos do Gestor -->
+                    <div id="card-senhas-gestor" class="glass-panel rounded-2xl p-5 h-fit">
                         <h3 class="font-bold mb-3 flex items-center gap-2"><i class="fas fa-shield-halved text-indigo-400"></i> Acessos do Gestor</h3>
                         <div id="lista-senhas-gestor" class="space-y-2 mb-3"></div>
                         <button id="btn-add-senha-gestor" onclick="abrirFormNovaSenhaGestor()"
@@ -387,22 +414,6 @@
                                 <button onclick="cadastrarNovaSenhaGestor()" class="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-bold transition">Salvar</button>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Lista/Agenda -->
-                    <div class="lg:col-span-3 glass-panel rounded-2xl p-5">
-                        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-                            <h3 class="font-bold flex items-center gap-2 text-lg"><i class="fas fa-calendar-alt text-indigo-400"></i> Equipe e Agendas</h3>
-                            <div class="flex flex-wrap gap-2">
-                                <button onclick="setDiaAdmin(-1)" id="dia-adm--1" class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Ontem</button>
-                                <button onclick="setDiaAdmin(0)"  id="dia-adm-0"  class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-indigo-500 bg-indigo-600 text-white">Hoje</button>
-                                <button onclick="setDiaAdmin(1)"  id="dia-adm-1"  class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Amanhã</button>
-                                <button onclick="setDiaAdmin(2)"  id="dia-adm-2"  class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Depois</button>
-                                <button onclick="abrirDataCustom('adm')" id="dia-adm-custom" class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 flex items-center gap-1"><i class="fas fa-calendar-day"></i> Data</button>
-                            </div>
-                        </div>
-                        <p id="adm-dia-label" class="text-xs text-slate-500 mb-3"></p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="lista-tecnicos-cards"></div>
                     </div>
                 </div>
             </div>
@@ -962,6 +973,9 @@ service cloud.firestore {
             if (id === 'tab-tecnicos') {
                 renderSenhasGestor();
             }
+            if (id === 'tab-adm') {
+                renderSenhasGestor();
+            }
         }
 
         // ── LOGIN GESTOR ──────────────────────────────────────────
@@ -1001,7 +1015,7 @@ service cloud.firestore {
         }
 
         async function criarSenhaMaster() {
-            const nome  = document.getElementById('gestor-setup-nome').value.trim();
+            const nome  = 'admin'; // nome fixo — imutável pela interface
             const senha = document.getElementById('gestor-setup-senha').value;
             const conf  = document.getElementById('gestor-setup-confirmar').value;
             const erroEl  = document.getElementById('gestor-setup-erro');
@@ -1067,11 +1081,11 @@ service cloud.firestore {
 
         async function renderSenhasGestor() {
             const isMaster = state.usuarioLogado && state.usuarioLogado.master;
-            const cardNovo = document.getElementById('card-novo-tecnico');
-            if (cardNovo) cardNovo.classList.toggle('hidden', !isMaster);
+            const btnAdm = document.getElementById('btn-tab-adm');
+            if (btnAdm) btnAdm.classList.toggle('hidden', !isMaster);
             const card = document.getElementById('card-senhas-gestor');
-            if (!isMaster) { card.classList.add('hidden'); return; }
-            card.classList.remove('hidden');
+            if (!card) return;
+            if (!isMaster) return;
             try {
                 const snap   = await configRef.get();
                 const senhas = (snap.exists && snap.data().senhasGestor) ? snap.data().senhasGestor : [];
@@ -1945,12 +1959,13 @@ service cloud.firestore {
                             <button onclick="abrirAgendaAdm(${t.id})" class="text-xs bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-lg border border-indigo-500/30 hover:bg-indigo-500/30 transition whitespace-nowrap" title="Ver agenda completa">
                                 <i class="fas fa-calendar-alt mr-1"></i>${totalAgendadas}
                             </button>
+                            ${state.usuarioLogado && state.usuarioLogado.master ? `
                             <button onclick="abrirEditarTec(${t.id})" class="text-xs bg-amber-500/20 text-amber-400 px-2 py-1 rounded-lg border border-amber-500/30 hover:bg-amber-500/30 transition" title="Editar técnico">
                                 <i class="fas fa-pen"></i>
                             </button>
                             <button onclick="deletarTecnico(${t.id})" class="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-lg border border-red-500/30 hover:bg-red-500 hover:text-white transition" title="Apagar técnico">
                                 <i class="fas fa-trash"></i>
-                            </button>
+                            </button>` : ''}
                         </div>
                     </div>
                     <div class="border-t border-slate-700 pt-3">
@@ -1973,6 +1988,7 @@ service cloud.firestore {
 
         // ── GESTÃO DE TÉCNICOS ────────────────────────────────────
         async function deletarTecnico(tecId) {
+            if (!state.usuarioLogado || !state.usuarioLogado.master) return;
             const tec = state.tecnicos.find(t => t.id === tecId);
             if (!tec) return;
             if (!confirm(`Apagar técnico "${tec.nome}" permanentemente?`)) return;
@@ -1984,6 +2000,7 @@ service cloud.firestore {
         }
 
         function abrirEditarTec(tecId) {
+            if (!state.usuarioLogado || !state.usuarioLogado.master) return;
             const tec = state.tecnicos.find(t => t.id === tecId);
             if (!tec) return;
             document.getElementById('edit-tec-id').value    = tec.id;
