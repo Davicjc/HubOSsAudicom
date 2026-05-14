@@ -152,6 +152,17 @@
             <div id="tech-login-select" class="hidden text-left bg-slate-800/50 p-4 rounded-xl border border-slate-700">
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Selecione seu perfil</p>
                 <div id="tech-list-login" class="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1"></div>
+                <div id="tech-senha-check" class="hidden mt-3 border-t border-slate-700 pt-3">
+                    <p class="text-xs text-slate-400 mb-2"><i class="fas fa-lock mr-1"></i>Senha de <strong id="tech-senha-nome" class="text-white"></strong></p>
+                    <input type="password" id="tech-senha-input" placeholder="Digite a senha"
+                           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none mb-1"
+                           onkeydown="if(event.key==='Enter') confirmarSenhaTecnico()">
+                    <p id="tech-senha-erro" class="text-red-400 text-xs hidden mb-2"><i class="fas fa-exclamation-circle mr-1"></i>Senha incorreta</p>
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="cancelarSenha()" class="flex-1 py-1.5 rounded-lg bg-slate-700 text-sm font-bold">Voltar</button>
+                        <button onclick="confirmarSenhaTecnico()" class="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-bold transition">Entrar</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -264,12 +275,22 @@
                         <form onsubmit="criarTecnico(event)" class="space-y-3">
                             <div><input type="text" id="tec-nome" placeholder="Nome Completo *" required class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none"></div>
                             <div><input type="text" id="tec-funcao" placeholder="Função / Equipe *" required class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none"></div>
+                            <div><input type="password" id="tec-senha" placeholder="Senha do técnico (opcional)" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none"></div>
                             <button id="btn-criar-tecnico" class="w-full bg-indigo-600 hover:bg-indigo-500 py-2 rounded-lg font-bold text-sm transition"><i class="fas fa-check mr-1"></i> Adicionar</button>
                         </form>
                     </div>
                     <!-- Lista/Agenda -->
                     <div class="lg:col-span-3 glass-panel rounded-2xl p-5">
-                        <h3 class="font-bold mb-4 flex items-center gap-2 text-lg"><i class="fas fa-calendar-alt text-indigo-400"></i> Equipe e Agendas</h3>
+                        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                            <h3 class="font-bold flex items-center gap-2 text-lg"><i class="fas fa-calendar-alt text-indigo-400"></i> Equipe e Agendas</h3>
+                            <div class="flex gap-2">
+                                <button onclick="setDiaAdmin(-1)" id="dia-adm--1" class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Ontem</button>
+                                <button onclick="setDiaAdmin(0)"  id="dia-adm-0"  class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-indigo-500 bg-indigo-600 text-white">Hoje</button>
+                                <button onclick="setDiaAdmin(1)"  id="dia-adm-1"  class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Amanhã</button>
+                                <button onclick="setDiaAdmin(2)"  id="dia-adm-2"  class="adm-dia-btn px-3 py-1 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Depois</button>
+                            </div>
+                        </div>
+                        <p id="adm-dia-label" class="text-xs text-slate-500 mb-3"></p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="lista-tecnicos-cards"></div>
                     </div>
                 </div>
@@ -294,7 +315,15 @@
         </header>
 
         <div class="p-4 flex-1 overflow-y-auto">
-            <h3 class="font-bold text-slate-400 uppercase text-xs tracking-wider mb-3 ml-1"><i class="fas fa-calendar-day mr-1"></i> Suas OSs de Hoje</h3>
+            <!-- Seletor de dias -->
+            <div class="flex gap-2 mb-3 overflow-x-auto pb-1 scrollbar-none">
+                <button onclick="setDiaTec(-1)" id="dia-tec--1" class="tec-dia-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Ontem</button>
+                <button onclick="setDiaTec(0)"  id="dia-tec-0"  class="tec-dia-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border border-indigo-500 bg-indigo-600 text-white">Hoje</button>
+                <button onclick="setDiaTec(1)"  id="dia-tec-1"  class="tec-dia-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Amanhã</button>
+                <button onclick="setDiaTec(2)"  id="dia-tec-2"  class="tec-dia-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">Depois</button>
+                <button onclick="abrirAgendaTec()" class="flex-shrink-0 ml-auto px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-500/40 bg-emerald-600/20 text-emerald-400"><i class="fas fa-calendar-alt mr-1"></i>Agenda</button>
+            </div>
+            <p id="tec-dia-label" class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 ml-1"></p>
             <div id="tec-app-lista" class="space-y-3"></div>
         </div>
 
@@ -336,6 +365,25 @@
         </div>
     </div>
 
+    <!-- MODAL AGENDA COMPLETA — TÉCNICO -->
+    <div id="modal-agenda-tec" class="fixed inset-0 z-50 bg-slate-900 hidden flex-col animate-fade">
+        <header class="p-4 bg-slate-800 flex items-center gap-3 border-b border-slate-700 sticky top-0">
+            <button onclick="fecharAgendaTec()" class="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center"><i class="fas fa-arrow-left"></i></button>
+            <h3 class="font-bold flex-1">Minha Agenda Completa</h3>
+        </header>
+        <div class="flex-1 overflow-y-auto p-4" id="agenda-tec-conteudo"></div>
+    </div>
+
+    <!-- MODAL AGENDA COMPLETA — ADMIN -->
+    <div id="modal-agenda-adm" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4" onclick="if(event.target===this)fecharAgendaAdm()">
+        <div class="glass-panel rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div class="p-5 border-b border-slate-700 flex items-center justify-between">
+                <h3 class="font-bold text-lg" id="agenda-adm-titulo">Agenda</h3>
+                <button onclick="fecharAgendaAdm()" class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4" id="agenda-adm-conteudo"></div>
+        </div>
+    </div>
 
     <!-- ═══════════════════════════════════════════════════
          FIREBASE SDK
@@ -430,6 +478,62 @@ service cloud.firestore {
             oss:         [],
             usuarioLogado: null
         };
+
+        // ── FILTRO DE DIA ─────────────────────────────────────────
+        let diaFiltroTec   = 0;
+        let diaFiltroAdmin = 0;
+
+        function _dataPorOffset(offset) {
+            const d = new Date();
+            d.setDate(d.getDate() + offset);
+            return d.toLocaleDateString('pt-BR');
+        }
+        function _labelDia(offset) {
+            if (offset === -1) return 'Ontem';
+            if (offset === 0)  return 'Hoje';
+            if (offset === 1)  return 'Amanhã';
+            if (offset === 2)  return 'Depois de amanhã';
+            return _dataPorOffset(offset);
+        }
+        function _ativarBtnDia(prefixo, offset) {
+            document.querySelectorAll('.' + prefixo).forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-500');
+                btn.classList.add('bg-slate-800', 'text-slate-400', 'border-slate-700');
+            });
+            const ativo = document.getElementById(prefixo.replace('-btn', '') + '-' + offset);
+            if (ativo) {
+                ativo.classList.remove('bg-slate-800', 'text-slate-400', 'border-slate-700');
+                ativo.classList.add('bg-indigo-600', 'text-white', 'border-indigo-500');
+            }
+        }
+
+        function setDiaTec(offset) {
+            diaFiltroTec = offset;
+            document.querySelectorAll('.tec-dia-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-500');
+                btn.classList.add('bg-slate-800', 'text-slate-400', 'border-slate-700');
+            });
+            const ativo = document.getElementById('dia-tec-' + offset);
+            if (ativo) {
+                ativo.classList.remove('bg-slate-800', 'text-slate-400', 'border-slate-700');
+                ativo.classList.add('bg-indigo-600', 'text-white', 'border-indigo-500');
+            }
+            renderTecAppLista();
+        }
+
+        function setDiaAdmin(offset) {
+            diaFiltroAdmin = offset;
+            document.querySelectorAll('.adm-dia-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-500');
+                btn.classList.add('bg-slate-800', 'text-slate-400', 'border-slate-700');
+            });
+            const ativo = document.getElementById('dia-adm-' + offset);
+            if (ativo) {
+                ativo.classList.remove('bg-slate-800', 'text-slate-400', 'border-slate-700');
+                ativo.classList.add('bg-indigo-600', 'text-white', 'border-indigo-500');
+            }
+            renderTecnicosCards();
+        }
 
         function salvarSessao() {
             sessionStorage.setItem('hubos_v3_sessao', JSON.stringify(state.usuarioLogado));
@@ -583,9 +687,10 @@ service cloud.firestore {
                 return;
             }
             list.innerHTML = state.tecnicos.map(t => `
-                <button onclick="loginTecnico(${t.id})" class="w-full text-left p-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-3">
+                <button onclick="selecionarTecnico(${t.id})" class="w-full text-left p-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center gap-3">
                     <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs" style="background:${t.cor}">${t.nome[0]}</div>
-                    <div><div class="font-bold text-sm">${t.nome}</div><div class="text-xs text-slate-400">${t.funcao}</div></div>
+                    <div class="flex-1"><div class="font-bold text-sm">${t.nome}</div><div class="text-xs text-slate-400">${t.funcao}</div></div>
+                    ${t.senha ? '<i class="fas fa-lock text-xs text-slate-500"></i>' : ''}
                 </button>
             `).join('');
         }
@@ -593,6 +698,44 @@ service cloud.firestore {
         function mostrarLoginTecnico() {
             document.getElementById('tech-login-select').classList.remove('hidden');
             _renderLoginTechList();
+        }
+
+        let _tecSelecionadoId = null;
+
+        function selecionarTecnico(id) {
+            const tec = state.tecnicos.find(t => t.id === id);
+            if (!tec) return;
+            if (tec.senha) {
+                _tecSelecionadoId = id;
+                document.getElementById('tech-senha-nome').textContent = tec.nome;
+                document.getElementById('tech-senha-input').value = '';
+                document.getElementById('tech-senha-erro').classList.add('hidden');
+                document.getElementById('tech-list-login').classList.add('hidden');
+                document.getElementById('tech-senha-check').classList.remove('hidden');
+                setTimeout(() => document.getElementById('tech-senha-input').focus(), 50);
+            } else {
+                loginTecnico(id);
+            }
+        }
+
+        function cancelarSenha() {
+            _tecSelecionadoId = null;
+            document.getElementById('tech-senha-check').classList.add('hidden');
+            document.getElementById('tech-list-login').classList.remove('hidden');
+        }
+
+        function confirmarSenhaTecnico() {
+            const tec = state.tecnicos.find(t => t.id === _tecSelecionadoId);
+            if (!tec) return;
+            const input = document.getElementById('tech-senha-input').value;
+            if (input === tec.senha) {
+                document.getElementById('tech-senha-check').classList.add('hidden');
+                loginTecnico(_tecSelecionadoId);
+            } else {
+                document.getElementById('tech-senha-erro').classList.remove('hidden');
+                document.getElementById('tech-senha-input').value = '';
+                document.getElementById('tech-senha-input').focus();
+            }
         }
 
         function loginTecnico(id) {
@@ -669,13 +812,16 @@ service cloud.firestore {
                 const cores = ['#ef4444','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ec4899'];
                 const id = Date.now();
                 const criadoEm = firebase.firestore.FieldValue.serverTimestamp();
-                await _writeTecnico(id, {
+                const senha = document.getElementById('tec-senha').value.trim();
+                const dados = {
                     id,
                     nome:     document.getElementById('tec-nome').value.trim(),
                     funcao:   document.getElementById('tec-funcao').value.trim(),
                     cor:      cores[Math.floor(Math.random() * cores.length)],
                     criadoEm
-                });
+                };
+                if (senha) dados.senha = senha;
+                await _writeTecnico(id, dados);
                 e.target.reset();
             } catch(err) {
                 alert('Erro ao criar técnico: ' + err.message);
@@ -853,26 +999,42 @@ service cloud.firestore {
         function renderTecnicosCards() {
             const cont = document.getElementById('lista-tecnicos-cards');
             if (!cont) return;
-            const hojeData = new Date().toLocaleDateString('pt-BR');
+            const diaStr = _dataPorOffset(diaFiltroAdmin);
+            const labelEl = document.getElementById('adm-dia-label');
+            if (labelEl) labelEl.textContent = `${_labelDia(diaFiltroAdmin)} — ${diaStr}`;
+
+            if (state.tecnicos.length === 0) {
+                cont.innerHTML = '<p class="text-xs text-slate-400 col-span-2">Nenhum técnico cadastrado.</p>';
+                return;
+            }
+
             cont.innerHTML = state.tecnicos.map(t => {
-                const osTec = state.oss.filter(o =>
+                const osDia = state.oss.filter(o =>
                     o.tecnicosIds && o.tecnicosIds.includes(t.id) &&
-                    o.tratativa   && o.tratativa.data === hojeData &&
+                    o.tratativa   && o.tratativa.data === diaStr &&
                     o.status !== 'fechada'
-                );
+                ).sort((a, b) => a.tratativa.hora.localeCompare(b.tratativa.hora));
+
+                const totalAgendadas = state.oss.filter(o =>
+                    o.tecnicosIds && o.tecnicosIds.includes(t.id) && o.tratativa
+                ).length;
+
                 return `
                 <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-lg" style="background:${t.cor}">${t.nome[0]}</div>
-                        <div>
-                            <h4 class="font-bold leading-none">${t.nome}</h4>
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white text-lg flex-shrink-0" style="background:${t.cor}">${t.nome[0]}</div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold leading-none truncate">${t.nome}</h4>
                             <span class="text-xs text-slate-400">${t.funcao}</span>
                         </div>
+                        <button onclick="abrirAgendaAdm(${t.id})" class="flex-shrink-0 text-xs bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-lg border border-indigo-500/30 hover:bg-indigo-500/30 transition whitespace-nowrap">
+                            <i class="fas fa-calendar-alt mr-1"></i>${totalAgendadas} OS
+                        </button>
                     </div>
                     <div class="border-t border-slate-700 pt-3">
-                        <p class="text-xs font-bold text-slate-500 uppercase mb-2">Agenda de Hoje (${osTec.length})</p>
+                        <p class="text-xs font-bold text-slate-500 uppercase mb-2">${_labelDia(diaFiltroAdmin)} (${osDia.length})</p>
                         <div class="space-y-2">
-                            ${osTec.length === 0 ? '<p class="text-xs text-slate-400">Livre</p>' : osTec.map(o => `
+                            ${osDia.length === 0 ? '<p class="text-xs text-slate-400">Livre</p>' : osDia.map(o => `
                                 <div class="bg-slate-900 rounded p-2 text-xs border-l-2" style="border-color:${t.cor}">
                                     <div class="flex justify-between text-slate-300 font-bold mb-0.5">
                                         <span>${o.tratativa.hora}</span>
@@ -887,8 +1049,88 @@ service cloud.firestore {
             }).join('');
         }
 
+        // ── MODAIS DE AGENDA ──────────────────────────────────────
+        function _renderAgendaConteudo(osTec, cont) {
+            const osCom = osTec.filter(o => o.tratativa);
+            osCom.sort((a, b) => {
+                const da = a.tratativa.data.split('/').reverse().join('');
+                const db = b.tratativa.data.split('/').reverse().join('');
+                return da.localeCompare(db) || a.tratativa.hora.localeCompare(b.tratativa.hora);
+            });
+
+            if (osCom.length === 0) {
+                cont.innerHTML = '<p class="text-center text-slate-400 mt-12 text-sm">Nenhuma OS agendada.</p>';
+                return;
+            }
+
+            const byDate = {};
+            osCom.forEach(o => {
+                if (!byDate[o.tratativa.data]) byDate[o.tratativa.data] = [];
+                byDate[o.tratativa.data].push(o);
+            });
+
+            const hoje = new Date().toLocaleDateString('pt-BR');
+            cont.innerHTML = Object.entries(byDate).map(([data, oss]) => {
+                const isHoje = data === hoje;
+                return `
+                <div class="mb-5">
+                    <p class="text-xs font-bold uppercase tracking-wider mb-2 ${isHoje ? 'text-indigo-400' : 'text-slate-500'}">${isHoje ? 'Hoje — ' : ''}${data} <span class="font-normal">(${oss.length} OS)</span></p>
+                    <div class="space-y-2">
+                        ${oss.map(o => {
+                            const ok = o.status === 'fechada';
+                            return `
+                            <div class="flex items-center gap-3 p-3 rounded-xl border ${ok ? 'border-emerald-500/20 bg-emerald-500/5 opacity-60' : 'border-slate-700 bg-slate-800/50'}">
+                                <div class="text-sm font-bold text-indigo-400 w-12 text-center flex-shrink-0">${o.tratativa.hora}</div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-bold text-sm truncate">${o.cliente}</div>
+                                    <div class="text-xs text-slate-400 truncate">${o.falha}</div>
+                                </div>
+                                <div class="text-[10px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${ok ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}">${ok ? 'Concluída' : 'Pendente'}</div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function abrirAgendaTec() {
+            const tecId = state.usuarioLogado && state.usuarioLogado.id;
+            if (!tecId) return;
+            const osTec = state.oss.filter(o => o.tecnicosIds && o.tecnicosIds.includes(tecId));
+            const modal = document.getElementById('modal-agenda-tec');
+            const cont  = document.getElementById('agenda-tec-conteudo');
+            _renderAgendaConteudo(osTec, cont);
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function fecharAgendaTec() {
+            const modal = document.getElementById('modal-agenda-tec');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function abrirAgendaAdm(tecId) {
+            const tec = state.tecnicos.find(t => t.id === tecId);
+            if (!tec) return;
+            const osTec = state.oss.filter(o => o.tecnicosIds && o.tecnicosIds.includes(tecId));
+            document.getElementById('agenda-adm-titulo').textContent = tec.nome;
+            const cont = document.getElementById('agenda-adm-conteudo');
+            _renderAgendaConteudo(osTec, cont);
+            const modal = document.getElementById('modal-agenda-adm');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function fecharAgendaAdm() {
+            const modal = document.getElementById('modal-agenda-adm');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
         // ── TÉCNICO APP ───────────────────────────────────────────
         function bootTecnico() {
+            diaFiltroTec = 0;
             showView('view-tecnico');
             const tec = state.tecnicos.find(t => t.id === state.usuarioLogado.id);
             if (tec) {
@@ -912,19 +1154,23 @@ service cloud.firestore {
             }
 
             const tecId = state.usuarioLogado.id;
-            const hoje  = new Date().toLocaleDateString('pt-BR');
+            const diaStr = _dataPorOffset(diaFiltroTec);
+            const labelEl = document.getElementById('tec-dia-label');
+            if (labelEl) labelEl.textContent = `${_labelDia(diaFiltroTec)} — ${diaStr}`;
+
             let oss = state.oss.filter(o =>
                 o.tecnicosIds && o.tecnicosIds.includes(tecId) &&
-                o.tratativa   && o.tratativa.data === hoje
+                o.tratativa   && o.tratativa.data === diaStr
             );
             oss.sort((a, b) => a.tratativa.hora.localeCompare(b.tratativa.hora));
 
             if (oss.length === 0) {
+                const msgs = { '-1': 'Nenhuma OS foi agendada para ontem.', '0': 'Sua agenda de hoje está vazia.', '1': 'Nenhuma OS agendada para amanhã.', '2': 'Nenhuma OS agendada para depois de amanhã.' };
                 cont.innerHTML = `
                 <div class="glass-panel p-8 rounded-2xl text-center border-t border-t-emerald-500/30">
-                    <i class="fas fa-mug-hot text-4xl text-slate-500 mb-3"></i>
-                    <h3 class="font-bold text-slate-300">Tudo limpo!</h3>
-                    <p class="text-sm text-slate-500 mt-1">Sua agenda de hoje está vazia.</p>
+                    <i class="fas fa-calendar-check text-4xl text-slate-500 mb-3"></i>
+                    <h3 class="font-bold text-slate-300">Nada aqui!</h3>
+                    <p class="text-sm text-slate-500 mt-1">${msgs[String(diaFiltroTec)] || 'Sem OSs nesse dia.'}</p>
                 </div>`;
                 return;
             }
