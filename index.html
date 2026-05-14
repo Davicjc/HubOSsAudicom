@@ -1291,35 +1291,85 @@ service cloud.firestore {
             }
             cont.innerHTML = oss.map(o => {
                 const ok = o.status === 'fechada';
-                const statusBadge = o.status === 'fechada' ? 'bg-emerald-500/20 text-emerald-400' :
+                const statusBadge = ok ? 'bg-emerald-500/20 text-emerald-400' :
                                     o.status === 'atribuida' ? 'bg-blue-500/20 text-blue-400' :
                                     'bg-amber-500/20 text-amber-400';
-                const statusLabel = o.status === 'fechada' ? 'Concluída' :
+                const statusLabel = ok ? 'Concluída' :
                                     o.status === 'atribuida' ? 'Atribuída' : 'Aberta';
+
+                const tecNomes = (o.tecnicosIds || [])
+                    .map(tid => state.tecnicos.find(t => t.id === tid))
+                    .filter(Boolean)
+                    .map(t => t.nome)
+                    .join(', ') || '—';
+
+                const mapsUrl = o.coords && o.coords.trim()
+                    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.coords.trim())}`
+                    : o.local
+                        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.local)}`
+                        : '';
+
+                const row = (label, val, extra = '') =>
+                    val ? `<div class="flex gap-2"><span class="text-slate-500 w-36 flex-shrink-0">${label}</span><span class="text-slate-200 ${extra}">${val}</span></div>` : '';
+
                 return `
-                <div class="rounded-xl border mb-2 overflow-hidden ${ok ? 'border-emerald-500/20 opacity-70' : 'border-slate-700'}">
+                <div class="rounded-xl border mb-2 overflow-hidden ${ok ? 'border-emerald-500/20' : 'border-slate-700'}">
                     <button onclick="toggleOsMaoDetalhe(${o.id})" class="w-full flex items-center gap-3 p-3 bg-slate-800/50 hover:bg-slate-700/50 transition text-left">
-                        <div class="text-sm font-black text-indigo-400 w-12 text-center flex-shrink-0">${o.tratativa.hora}</div>
+                        <div class="text-sm font-black text-indigo-400 w-12 text-center flex-shrink-0">${o.tratativa?.hora || '--:--'}</div>
                         <div class="flex-1 min-w-0">
-                            <div class="font-bold text-sm truncate">${o.cliente}</div>
-                            <div class="text-xs text-slate-400 truncate">${o.falha}</div>
+                            <div class="font-bold text-sm">${o.numero ? `<span class="text-indigo-400 mr-1">${o.numero}</span>` : ''}${o.cliente || '—'}</div>
+                            <div class="text-xs text-slate-400">${o.falha || ''}</div>
                         </div>
                         <span class="text-[10px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${statusBadge}">${statusLabel}</span>
                         <i class="fas fa-chevron-down text-slate-500 text-xs flex-shrink-0 transition-transform" id="mao-chevron-${o.id}"></i>
                     </button>
                     <div id="mao-detalhe-${o.id}" class="hidden border-t border-slate-700/50 bg-slate-900/60 px-4 py-3 space-y-2 text-xs">
-                        ${o.codigo       ? `<div class="flex gap-2"><span class="text-slate-500 w-32 flex-shrink-0">Código HubSoft</span><span class="text-slate-200 font-mono">${o.codigo}</span></div>` : ''}
-                        <div class="flex gap-2"><span class="text-slate-500 w-32 flex-shrink-0">Cliente</span><span class="text-slate-200 font-bold">${o.cliente}</span></div>
-                        <div class="flex gap-2"><span class="text-slate-500 w-32 flex-shrink-0">Ponto HubSoft</span><span class="text-slate-200">${o.ponto}</span></div>
-                        <div class="flex gap-2"><span class="text-slate-500 w-32 flex-shrink-0">Falha</span><span class="text-slate-200">${o.falha}</span></div>
-                        ${o.local        ? `<div class="flex gap-2"><span class="text-slate-500 w-32 flex-shrink-0">Local</span><span class="text-slate-200">${o.local}</span></div>` : ''}
-                        <div class="flex gap-2"><span class="text-slate-500 w-32 flex-shrink-0">Telefone</span><span class="text-slate-200">${o.telefone}</span></div>
-                        ${o.disponibilidade ? `<div class="flex gap-2"><span class="text-slate-500 w-32 flex-shrink-0">Disponibilidade</span><span class="text-slate-200">${o.disponibilidade}</span></div>` : ''}
-                        ${o.responsavel  ? `<div class="flex gap-2"><span class="text-slate-500 w-32 flex-shrink-0">Responsável</span><span class="text-slate-200">${o.responsavel}</span></div>` : ''}
-                        ${o.protocoloHub ? `<div class="flex gap-2"><span class="text-slate-500 w-32 flex-shrink-0">Prot. HubSoft</span><span class="text-slate-200 font-mono">${o.protocoloHub}</span></div>` : ''}
-                        ${o.protocoloJames ? `<div class="flex gap-2"><span class="text-slate-500 w-32 flex-shrink-0">Prot. James</span><span class="text-slate-200 font-mono">${o.protocoloJames}</span></div>` : ''}
-                        ${o.dataCriacao  ? `<div class="flex gap-2"><span class="text-slate-500 w-32 flex-shrink-0">Criada em</span><span class="text-slate-400">${o.dataCriacao}</span></div>` : ''}
-                        ${o.coords && o.coords !== '' ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.coords)}" target="_blank" class="inline-flex items-center gap-1 text-blue-400 hover:underline mt-1"><i class="fas fa-map-marked-alt"></i> Abrir no Maps</a>` : (o.local ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.local)}" target="_blank" class="inline-flex items-center gap-1 text-blue-400 hover:underline mt-1"><i class="fas fa-map-marked-alt"></i> Abrir no Maps</a>` : '')}
+
+                        <!-- Identificação -->
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider pt-1">Identificação</p>
+                        ${row('Número OS', o.numero, 'font-bold')}
+                        ${row('Código HubSoft', o.codigo, 'font-mono')}
+                        ${row('Ponto HubSoft', o.ponto)}
+                        ${row('Prot. HubSoft', o.protocoloHub, 'font-mono')}
+                        ${row('Prot. James', o.protocoloJames, 'font-mono')}
+
+                        <!-- Cliente -->
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider pt-2">Cliente</p>
+                        ${row('Nome', o.cliente, 'font-bold')}
+                        ${row('Telefone', o.telefone)}
+                        ${row('Disponibilidade', o.disponibilidade)}
+                        ${row('Responsável', o.responsavel)}
+
+                        <!-- Localização -->
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider pt-2">Localização</p>
+                        ${row('Endereço / Local', o.local || o.ponto)}
+                        ${row('Coordenadas', o.coords)}
+                        ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" class="inline-flex items-center gap-1 text-blue-400 hover:underline"><i class="fas fa-map-marked-alt"></i> Abrir no Maps</a>` : ''}
+
+                        <!-- Falha -->
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider pt-2">Falha</p>
+                        <p class="text-slate-200 leading-relaxed">${o.falha || '—'}</p>
+
+                        <!-- Atribuição -->
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider pt-2">Atribuição</p>
+                        ${row('Técnico(s)', tecNomes)}
+                        ${row('Data', o.tratativa?.data)}
+                        ${row('Horário', o.tratativa?.hora)}
+                        ${row('Criada em', o.dataCriacao)}
+
+                        ${ok ? `
+                        <!-- Encerramento -->
+                        <p class="text-[10px] font-bold text-emerald-500 uppercase tracking-wider pt-2">Encerramento</p>
+                        ${row('Encerrada em', o.encerradoEm)}
+                        ${o.notasExecucao ? `<div><span class="text-slate-500">Notas de execução</span><p class="text-slate-200 leading-relaxed mt-1 whitespace-pre-wrap">${o.notasExecucao}</p></div>` : ''}
+                        ${o.assinaturaBase64 ? `
+                        <div>
+                            <span class="text-slate-500 block mb-1"><i class="fas fa-signature text-amber-400 mr-1"></i>Assinatura do cliente</span>
+                            <div class="bg-slate-100 rounded-lg p-2 inline-block">
+                                <img src="${o.assinaturaBase64}" class="max-h-28 rounded" alt="Assinatura">
+                            </div>
+                        </div>` : ''}
+                        ` : ''}
                     </div>
                 </div>`;
             }).join('');
