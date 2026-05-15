@@ -159,10 +159,13 @@
                 <!-- Login normal -->
                 <div id="gestor-login-normal" class="hidden">
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3"><i class="fas fa-chess-king text-indigo-400 mr-1"></i>Acesso do Gestor</p>
+                    <input type="text" id="gestor-nome-input" placeholder="Nome" autocomplete="off"
+                           class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none mb-2"
+                           onkeydown="if(event.key==='Enter') document.getElementById('gestor-senha-input').focus()">
                     <input type="password" id="gestor-senha-input" placeholder="Senha"
                            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none mb-1"
                            onkeydown="if(event.key==='Enter') confirmarSenhaGestor()">
-                    <p id="gestor-senha-erro" class="text-red-400 text-xs hidden mb-2"><i class="fas fa-exclamation-circle mr-1"></i>Senha incorreta</p>
+                    <p id="gestor-senha-erro" class="text-red-400 text-xs hidden mb-2"><i class="fas fa-exclamation-circle mr-1"></i><span id="gestor-senha-erro-txt">Senha incorreta</span></p>
                     <div class="flex gap-2 mt-2">
                         <button onclick="cancelarLoginGestor()" class="flex-1 py-1.5 rounded-lg bg-slate-700 text-sm font-bold">Voltar</button>
                         <button id="btn-entrar-gestor" onclick="confirmarSenhaGestor()" class="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-bold transition">Entrar</button>
@@ -1140,12 +1143,13 @@ service cloud.firestore {
                     setTimeout(() => document.getElementById('gestor-setup-nome').focus(), 50);
                 } else {
                     document.getElementById('gestor-login-normal').classList.remove('hidden');
+                    document.getElementById('gestor-nome-input').value = '';
                     document.getElementById('gestor-senha-input').value = '';
                     document.getElementById('gestor-senha-erro').classList.add('hidden');
                     const btn = document.getElementById('btn-entrar-gestor');
                     btn.disabled = false;
                     btn.innerHTML = 'Entrar';
-                    setTimeout(() => document.getElementById('gestor-senha-input').focus(), 50);
+                    setTimeout(() => document.getElementById('gestor-nome-input').focus(), 50);
                 }
             } catch(e) {
                 document.getElementById('gestor-login-loading').classList.add('hidden');
@@ -1187,29 +1191,44 @@ service cloud.firestore {
         }
 
         async function confirmarSenhaGestor() {
-            const input  = document.getElementById('gestor-senha-input').value;
-            const erroEl = document.getElementById('gestor-senha-erro');
-            const btn    = document.getElementById('btn-entrar-gestor');
-            if (!input) return;
+            const nomeInput  = document.getElementById('gestor-nome-input').value.trim().toLowerCase();
+            const senhaInput = document.getElementById('gestor-senha-input').value;
+            const erroEl  = document.getElementById('gestor-senha-erro');
+            const erroTxt = document.getElementById('gestor-senha-erro-txt');
+            const btn     = document.getElementById('btn-entrar-gestor');
+
+            if (!nomeInput) {
+                erroTxt.textContent = 'Informe o nome.';
+                erroEl.classList.remove('hidden');
+                document.getElementById('gestor-nome-input').focus();
+                return;
+            }
+            if (!senhaInput) {
+                erroTxt.textContent = 'Informe a senha.';
+                erroEl.classList.remove('hidden');
+                document.getElementById('gestor-senha-input').focus();
+                return;
+            }
+
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Verificando...';
             try {
                 const snap   = await configRef.get();
                 const senhas = (snap.exists && snap.data().senhasGestor) ? snap.data().senhasGestor : [];
-                const match  = senhas.find(s => s.senha === input);
+                const match  = senhas.find(s => s.nome.trim().toLowerCase() === nomeInput && s.senha === senhaInput);
                 if (match) {
                     erroEl.classList.add('hidden');
                     state.usuarioLogado = { tipo: 'gestor', master: match.master === true, nomeGestor: match.nome };
                     salvarSessao();
                     bootGestor();
                 } else {
-                    erroEl.textContent = 'Senha incorreta';
+                    erroTxt.textContent = 'Nome ou senha incorretos.';
                     erroEl.classList.remove('hidden');
                     btn.disabled = false;
                     btn.innerHTML = 'Entrar';
                 }
             } catch(e) {
-                erroEl.textContent = 'Erro de conexão. Tente novamente.';
+                erroTxt.textContent = 'Erro de conexão. Tente novamente.';
                 erroEl.classList.remove('hidden');
                 btn.disabled = false;
                 btn.innerHTML = 'Entrar';
