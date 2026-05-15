@@ -233,6 +233,7 @@
             <!-- Tabs -->
             <div class="max-w-7xl mx-auto px-4 flex overflow-x-auto gap-1 border-t border-slate-700/50">
                 <button onclick="switchTab('tab-dashboard')" id="btn-tab-dashboard" class="px-4 py-3 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400 whitespace-nowrap"><i class="fas fa-chart-pie mr-2"></i>Dashboard</button>
+                <button onclick="switchTab('tab-nova-os')" id="btn-tab-nova-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-plus-circle mr-2"></i>Nova OS</button>
                 <button onclick="switchTab('tab-os')" id="btn-tab-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-list-check mr-2"></i>Gestão de OS & Mapa</button>
                 <button onclick="switchTab('tab-tecnicos')" id="btn-tab-tecnicos" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-users mr-2"></i>Técnicos & Agenda</button>
                 <button onclick="switchTab('tab-adm')" id="btn-tab-adm" class="hidden px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-amber-400 hover:text-amber-300 whitespace-nowrap"><i class="fas fa-shield-halved mr-2"></i>ADM</button>
@@ -266,8 +267,11 @@
                     </div>
                 </div>
 
-                <!-- Nova OS -->
-                <div class="glass-panel p-6 rounded-2xl border-l-4 border-l-emerald-500">
+            </div>
+
+            <!-- TAB: NOVA OS -->
+            <div id="tab-nova-os" class="tab-content animate-fade">
+                <div class="glass-panel p-6 rounded-2xl border-l-4 border-l-emerald-500 max-w-3xl mx-auto">
                     <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><i class="fas fa-plus-circle text-emerald-500"></i> Cadastrar Nova OS</h2>
 
                     <!-- Campo automático -->
