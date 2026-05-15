@@ -515,6 +515,107 @@
 
                 <input type="hidden" id="exec-os-id">
                 <button onclick="salvarExecucao()" id="btn-salvar-exec" class="w-full bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition text-lg flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> Encerrar OS</button>
+                <button onclick="abrirNaoExec()" class="w-full bg-rose-700/80 border border-rose-600/50 text-white font-bold py-3 rounded-xl active:scale-95 transition flex items-center justify-center gap-2 text-sm"><i class="fas fa-ban"></i> Não Executado</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NÃO EXECUTADO -->
+    <div id="modal-nao-exec" class="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4" onclick="if(event.target===this)fecharNaoExec()">
+        <div class="glass-panel rounded-2xl w-full max-w-sm animate-fade">
+            <div class="p-4 border-b border-slate-700 flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-rose-600/20 flex items-center justify-center text-rose-400 flex-shrink-0"><i class="fas fa-ban"></i></div>
+                <div>
+                    <h3 class="font-bold text-sm">OS Não Executada</h3>
+                    <p class="text-xs text-slate-400">A OS voltará para <span class="text-amber-400 font-bold">Abertos</span> sem técnico vinculado</p>
+                </div>
+            </div>
+            <div class="p-4 space-y-3">
+                <div>
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">Motivo *</label>
+                    <textarea id="nao-exec-motivo" rows="4" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm focus:border-rose-500 outline-none resize-none" placeholder="Descreva por que a OS não pôde ser executada..."></textarea>
+                    <p id="nao-exec-erro" class="text-rose-400 text-xs hidden mt-1"><i class="fas fa-exclamation-circle mr-1"></i>Informe o motivo (mínimo 10 caracteres).</p>
+                </div>
+                <div class="flex gap-2 pt-1">
+                    <button onclick="fecharNaoExec()" class="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 font-bold text-sm transition">Cancelar</button>
+                    <button onclick="confirmarNaoExec()" id="btn-confirmar-nao-exec" class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 font-bold text-sm transition flex items-center justify-center gap-2"><i class="fas fa-ban"></i> Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR OS -->
+    <div id="modal-editar-os" class="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="glass-panel rounded-2xl w-full max-w-lg flex flex-col animate-fade" style="max-height:90vh">
+            <div class="p-4 border-b border-slate-700 flex items-center gap-3 flex-shrink-0">
+                <div class="w-9 h-9 rounded-full bg-indigo-600/20 flex items-center justify-center text-indigo-400 flex-shrink-0"><i class="fas fa-pen"></i></div>
+                <div class="flex-1">
+                    <h3 class="font-bold text-sm">Editar OS</h3>
+                    <p class="text-xs text-slate-400" id="edit-os-titulo"></p>
+                </div>
+                <button onclick="fecharEditarOS()" class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+                <input type="hidden" id="edit-os-id">
+                <div class="grid grid-cols-1 gap-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Código HubSoft</label>
+                            <input type="text" id="edit-os-codigo" placeholder="Ex: 2866" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Ponto HubSoft *</label>
+                            <input type="text" id="edit-os-ponto" placeholder="Ex: 31_10MB_RURAL" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">Cliente HubSoft *</label>
+                        <input type="text" id="edit-os-cliente" placeholder="Nome completo do cliente" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1">Falha *</label>
+                        <textarea id="edit-os-falha" rows="2" placeholder="Descreva a falha..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 resize-none"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Telefone *</label>
+                            <input type="text" id="edit-os-telefone" placeholder="(00) 00000-0000" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Disponibilidade</label>
+                            <input type="text" id="edit-os-disponibilidade" placeholder="Manhã, Tarde..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Responsável pelo Local</label>
+                            <input type="text" id="edit-os-responsavel" placeholder="Nome do responsável" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Local (Endereço)</label>
+                            <input type="text" id="edit-os-local" placeholder="Rua, número, bairro..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Protocolo HubSoft</label>
+                            <input type="text" id="edit-os-protocolo-hub" placeholder="Número do protocolo" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 mb-1">Protocolo James</label>
+                            <input type="text" id="edit-os-protocolo-james" placeholder="Número do protocolo" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 font-mono">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1"><i class="fas fa-map-marker-alt text-rose-400 mr-1"></i>Coordenadas GPS (Lat, Lng)</label>
+                        <input type="text" id="edit-os-coords" placeholder="-18.91, -48.27" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 font-mono">
+                    </div>
+                    <p id="edit-os-erro" class="text-rose-400 text-xs hidden"><i class="fas fa-exclamation-circle mr-1"></i><span id="edit-os-erro-txt"></span></p>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-700 flex gap-2 flex-shrink-0">
+                <button onclick="fecharEditarOS()" class="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 font-bold text-sm transition">Cancelar</button>
+                <button onclick="salvarEditarOS()" id="btn-salvar-edit-os" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-sm transition flex items-center justify-center gap-2"><i class="fas fa-save"></i> Salvar Alterações</button>
             </div>
         </div>
     </div>
@@ -1503,13 +1604,17 @@ service cloud.firestore {
                     const dh = os.tratativa ? `${os.tratativa.data} ${os.tratativa.hora}` : '';
                     tecsStr = `<div class="text-[10px] mt-1 text-slate-400"><i class="fas fa-users text-indigo-400"></i> ${nomes.join(', ')} <br>🗓 ${dh}</div>`;
                 }
+                const seloNaoExec = os.motivoNaoExecutado
+                    ? `<div class="flex items-center gap-1 mt-1.5"><span class="text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded-full"><i class="fas fa-ban mr-0.5"></i>Não executada</span></div>`
+                    : '';
                 return `
-                <div onclick="abrirPainelAtribuicao(${os.id})" class="bg-slate-800/50 border border-slate-700 p-3 rounded-xl cursor-pointer hover:border-indigo-500 transition">
+                <div onclick="abrirPainelAtribuicao(${os.id})" class="bg-slate-800/50 border ${os.motivoNaoExecutado ? 'border-rose-500/30' : 'border-slate-700'} p-3 rounded-xl cursor-pointer hover:border-indigo-500 transition">
                     <div class="flex justify-between items-start mb-1">
                         <strong class="text-sm font-bold truncate max-w-[70%]">${os.cliente}</strong>
                         <span class="w-2 h-2 rounded-full mt-1" style="background:${cor}"></span>
                     </div>
                     <p class="text-xs text-slate-400 truncate">${os.falha}</p>
+                    ${seloNaoExec}
                     ${tecsStr}
                 </div>`;
             }).join('');
@@ -1541,7 +1646,10 @@ service cloud.firestore {
                             <p class="text-xs text-slate-400 mt-0.5"><i class="fas fa-exclamation-triangle text-amber-400 mr-1"></i>${os.falha}</p>
                             ${os.disponibilidade ? `<p class="text-xs text-slate-500 mt-0.5"><i class="fas fa-clock mr-1"></i>Disp.: ${os.disponibilidade}${os.responsavel ? ' · Resp.: '+os.responsavel : ''}</p>` : ''}
                         </div>
-                        <button onclick="deletarOS(${os.id})" class="bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded flex items-center gap-2 text-xs font-bold hover:bg-red-500 hover:text-white transition flex-shrink-0 ml-2"><i class="fas fa-trash"></i> Apagar</button>
+                        <div class="flex gap-1.5 flex-shrink-0 ml-2">
+                            <button onclick="abrirEditarOS(${os.id})" class="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-3 py-1 rounded flex items-center gap-1.5 text-xs font-bold hover:bg-indigo-500 hover:text-white transition"><i class="fas fa-pen"></i> Editar</button>
+                            <button onclick="deletarOS(${os.id})" class="bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded flex items-center gap-1.5 text-xs font-bold hover:bg-red-500 hover:text-white transition"><i class="fas fa-trash"></i> Apagar</button>
+                        </div>
                     </div>
                     <div class="flex flex-wrap gap-2 items-center">
                         <span class="text-xs text-slate-500 font-bold uppercase">Status:</span>
@@ -1550,6 +1658,13 @@ service cloud.firestore {
                         `).join('')}
                     </div>
                 </div>
+
+                ${os.motivoNaoExecutado ? `
+                <div class="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 mb-4">
+                    <p class="text-xs font-bold text-rose-400 uppercase mb-1"><i class="fas fa-ban mr-1"></i> Não Executada pelo Técnico</p>
+                    <p class="text-xs text-slate-400 mb-1"><i class="fas fa-clock mr-1"></i>${os.motivoNaoExecutado.registradoEm}</p>
+                    <p class="text-sm text-slate-200 leading-relaxed">${os.motivoNaoExecutado.motivo}</p>
+                </div>` : ''}
 
                 ${os.status === 'fechada'
                     ? `<div class="space-y-3 mb-4">
@@ -1996,9 +2111,12 @@ service cloud.firestore {
         }
 
         async function confirmarAtribuicaoForçada() {
+            const osId   = _atribForçadaOsId;
+            const updates = _atribForçadaUpdates;
+            const os     = _atribForçadaOs;
             fecharModalConflito();
-            if (!_atribForçadaOsId) return;
-            await _executarSalvarAtribuicao(_atribForçadaOsId, _atribForçadaUpdates, _atribForçadaOs);
+            if (!osId) return;
+            await _executarSalvarAtribuicao(osId, updates, os);
         }
 
         async function _executarSalvarAtribuicao(osId, updates, os) {
@@ -2464,6 +2582,139 @@ service cloud.firestore {
                 alert('Erro ao salvar: ' + err.message);
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-check-circle"></i> Encerrar OS';
+            }
+        }
+
+        function abrirNaoExec() {
+            document.getElementById('nao-exec-motivo').value = '';
+            document.getElementById('nao-exec-erro').classList.add('hidden');
+            const modal = document.getElementById('modal-nao-exec');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function fecharNaoExec() {
+            const modal = document.getElementById('modal-nao-exec');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function confirmarNaoExec() {
+            const motivo = document.getElementById('nao-exec-motivo').value.trim();
+            const erroEl = document.getElementById('nao-exec-erro');
+            if (motivo.length < 10) { erroEl.classList.remove('hidden'); return; }
+            erroEl.classList.add('hidden');
+
+            const id = parseInt(document.getElementById('exec-os-id').value);
+            const btn = document.getElementById('btn-confirmar-nao-exec');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Salvando...';
+
+            const registradoEm = new Date().toLocaleString('pt-BR');
+            const os = state.oss.find(o => o.id === id);
+            if (os) {
+                os.status = 'aberta';
+                os.tecnicosIds = [];
+                os.tratativa = null;
+                os.motivoNaoExecutado = { motivo, registradoEm };
+            }
+
+            try {
+                await _updateOS(id, {
+                    status: 'aberta',
+                    tecnicosIds: [],
+                    tratativa: null,
+                    motivoNaoExecutado: { motivo, registradoEm }
+                });
+                fecharNaoExec();
+                fecharModalExec();
+                renderTecAppLista();
+            } catch(err) {
+                if (os) { os.status = 'atribuida'; }
+                alert('Erro ao salvar: ' + err.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-ban"></i> Confirmar';
+            }
+        }
+
+        function abrirEditarOS(id) {
+            const os = state.oss.find(o => o.id === id);
+            if (!os) return;
+            document.getElementById('edit-os-id').value                = os.id;
+            document.getElementById('edit-os-titulo').textContent      = `#${os.id} — ${os.cliente}`;
+            document.getElementById('edit-os-codigo').value            = os.codigo || '';
+            document.getElementById('edit-os-ponto').value             = os.ponto || '';
+            document.getElementById('edit-os-cliente').value           = os.cliente || '';
+            document.getElementById('edit-os-falha').value             = os.falha || '';
+            document.getElementById('edit-os-telefone').value          = os.telefone || '';
+            document.getElementById('edit-os-disponibilidade').value   = os.disponibilidade || '';
+            document.getElementById('edit-os-responsavel').value       = os.responsavel || '';
+            document.getElementById('edit-os-local').value             = os.local || '';
+            document.getElementById('edit-os-protocolo-hub').value     = os.protocoloHub || '';
+            document.getElementById('edit-os-protocolo-james').value   = os.protocoloJames || '';
+            document.getElementById('edit-os-coords').value            = os.coords || '';
+            document.getElementById('edit-os-erro').classList.add('hidden');
+            const modal = document.getElementById('modal-editar-os');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function fecharEditarOS() {
+            const modal = document.getElementById('modal-editar-os');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function salvarEditarOS() {
+            const id     = parseInt(document.getElementById('edit-os-id').value);
+            const ponto  = document.getElementById('edit-os-ponto').value.trim();
+            const cliente = document.getElementById('edit-os-cliente').value.trim();
+            const falha  = document.getElementById('edit-os-falha').value.trim();
+            const telefone = document.getElementById('edit-os-telefone').value.trim();
+            const erroEl = document.getElementById('edit-os-erro');
+            const erroTxt = document.getElementById('edit-os-erro-txt');
+
+            if (!ponto || !cliente || !falha || !telefone) {
+                erroTxt.textContent = 'Preencha os campos obrigatórios: Ponto, Cliente, Falha e Telefone.';
+                erroEl.classList.remove('hidden');
+                return;
+            }
+            erroEl.classList.add('hidden');
+
+            const btn = document.getElementById('btn-salvar-edit-os');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Salvando...';
+
+            const updates = {
+                codigo:          document.getElementById('edit-os-codigo').value.trim(),
+                ponto,
+                cliente,
+                falha,
+                telefone,
+                disponibilidade: document.getElementById('edit-os-disponibilidade').value.trim(),
+                responsavel:     document.getElementById('edit-os-responsavel').value.trim(),
+                local:           document.getElementById('edit-os-local').value.trim(),
+                protocoloHub:    document.getElementById('edit-os-protocolo-hub').value.trim(),
+                protocoloJames:  document.getElementById('edit-os-protocolo-james').value.trim(),
+                coords:          document.getElementById('edit-os-coords').value.trim(),
+            };
+
+            const os = state.oss.find(o => o.id === id);
+            if (os) Object.assign(os, updates);
+
+            try {
+                await _updateOS(id, updates);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
+                fecharEditarOS();
+                abrirPainelAtribuicao(id);
+                renderFilaLateral(filtroOSAtual);
+            } catch(err) {
+                if (os) Object.assign(os, { ponto: os.ponto });
+                erroTxt.textContent = 'Erro ao salvar: ' + err.message;
+                erroEl.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
             }
         }
 
