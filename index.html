@@ -592,7 +592,16 @@
                     <button onclick="avNavDia(1)" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition"><i class="fas fa-chevron-right text-xs"></i></button>
                     <button onclick="avNavDia(0)" class="px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition">Hoje</button>
                     <span id="av-dia-label" class="font-bold text-slate-200 text-sm ml-1"></span>
-                    <span class="ml-auto text-[11px] text-slate-500 hidden sm:block"><i class="fas fa-hand-paper mr-1 opacity-60"></i>Arraste um bloco para reagendar</span>
+                    <button onclick="toggleAvFiltroPanel()" id="btn-av-filtro-tecs" style="margin-left:auto;height:28px;padding:0 10px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#94a3b8;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;white-space:nowrap;transition:border-color .15s" onmouseover="this.style.borderColor='#6366f1';this.style.color='#c7d2fe'" onmouseout="this.style.borderColor='#334155';this.style.color='#94a3b8'">
+                        <i class="fas fa-users" style="font-size:10px"></i>
+                        <span id="av-filtro-lbl">Técnicos</span>
+                        <i id="av-filtro-arrow" class="fas fa-chevron-down" style="font-size:9px;opacity:0.5"></i>
+                    </button>
+                    <span class="text-[11px] text-slate-500 hidden sm:block ml-2"><i class="fas fa-hand-paper mr-1 opacity-60"></i>Arraste para reagendar</span>
+                </div>
+                <!-- Technician filter dropdown -->
+                <div id="av-filtro-panel" style="display:none;position:absolute;top:48px;right:16px;z-index:30;background:#1e293b;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 14px;min-width:190px;max-height:calc(100vh - 120px);overflow-y:auto;box-shadow:0 16px 40px rgba(0,0,0,0.55)">
+                    <div id="av-filtro-lista"></div>
                 </div>
                 <!-- Scrollable calendar grid -->
                 <div id="av-grid" style="position:absolute;top:48px;left:0;right:0;bottom:0;background:#0f172a;overflow:scroll;-webkit-overflow-scrolling:touch"></div>
@@ -4059,6 +4068,91 @@ service cloud.firestore {
         }
 
         // ── AGENDA VISUAL ─────────────────────────────────────────
+        let _avTecsFiltro = null; // null = show all
+
+        function toggleAvFiltroPanel() {
+            const panel = document.getElementById('av-filtro-panel');
+            const arrow = document.getElementById('av-filtro-arrow');
+            if (!panel) return;
+            const open = panel.style.display !== 'none';
+            if (open) {
+                panel.style.display = 'none';
+                if (arrow) arrow.style.transform = '';
+                document.removeEventListener('click', _avFiltroOutsideClick, true);
+            } else {
+                _renderAvFiltroLista();
+                panel.style.display = 'block';
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+                setTimeout(() => document.addEventListener('click', _avFiltroOutsideClick, true), 0);
+            }
+        }
+
+        function _avFiltroOutsideClick(e) {
+            const panel = document.getElementById('av-filtro-panel');
+            const btn   = document.getElementById('btn-av-filtro-tecs');
+            if (panel && !panel.contains(e.target) && btn && !btn.contains(e.target)) {
+                panel.style.display = 'none';
+                const arrow = document.getElementById('av-filtro-arrow');
+                if (arrow) arrow.style.transform = '';
+                document.removeEventListener('click', _avFiltroOutsideClick, true);
+            }
+        }
+
+        function _renderAvFiltroLista() {
+            const lista = document.getElementById('av-filtro-lista');
+            if (!lista) return;
+            const todos = _avTecsFiltro === null;
+            lista.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                    <span style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.06em">Filtrar técnicos</span>
+                    <button onclick="_avFiltroSelecionarTodos()" style="font-size:10px;color:#818cf8;background:none;border:none;cursor:pointer;font-weight:700;padding:0">Todos</button>
+                </div>
+                ${state.tecnicos.map(t => {
+                    const checked = _avTecsFiltro === null || _avTecsFiltro.has(t.id);
+                    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;border-bottom:1px solid rgba(100,116,139,0.12)">
+                        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleAvTec(${t.id},this.checked)"
+                            style="width:14px;height:14px;accent-color:#6366f1;flex-shrink:0;cursor:pointer">
+                        <div style="width:9px;height:9px;border-radius:50%;background:${t.cor||'#6366f1'};flex-shrink:0"></div>
+                        <span style="font-size:12px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px" title="${t.nome}">${t.nome}</span>
+                    </label>`;
+                }).join('')}`;
+        }
+
+        function toggleAvTec(tecId, checked) {
+            if (_avTecsFiltro === null) {
+                _avTecsFiltro = new Set(state.tecnicos.map(t => t.id));
+            }
+            if (checked) _avTecsFiltro.add(tecId);
+            else         _avTecsFiltro.delete(tecId);
+            if (_avTecsFiltro.size === state.tecnicos.length) _avTecsFiltro = null;
+            _avAtualizarFiltroLbl();
+            renderAgendaVisual();
+        }
+
+        function _avFiltroSelecionarTodos() {
+            _avTecsFiltro = null;
+            _renderAvFiltroLista();
+            _avAtualizarFiltroLbl();
+            renderAgendaVisual();
+        }
+
+        function _avAtualizarFiltroLbl() {
+            const lbl = document.getElementById('av-filtro-lbl');
+            if (!lbl) return;
+            if (_avTecsFiltro === null) {
+                lbl.textContent = 'Técnicos';
+            } else {
+                lbl.textContent = `Técnicos (${_avTecsFiltro.size}/${state.tecnicos.length})`;
+            }
+            // highlight button when filtered
+            const btn = document.getElementById('btn-av-filtro-tecs');
+            if (btn) {
+                btn.style.borderColor  = _avTecsFiltro !== null ? '#6366f1' : '#334155';
+                btn.style.color        = _avTecsFiltro !== null ? '#c7d2fe' : '#94a3b8';
+                btn.style.background   = _avTecsFiltro !== null ? 'rgba(99,102,241,0.15)' : '#1e293b';
+            }
+        }
+
         const _AV_PALETTE = [
             '#818cf8','#34d399','#fb923c','#a78bfa','#f472b6',
             '#38bdf8','#facc15','#4ade80','#f87171','#c084fc','#2dd4bf','#fb7185'
@@ -4134,9 +4228,15 @@ service cloud.firestore {
             const lbl = document.getElementById('av-dia-label');
             if (lbl) lbl.textContent = _avFmtDia(dia);
 
-            const tecs = state.tecnicos;
-            if (!tecs.length) {
+            const tecs = _avTecsFiltro === null
+                ? state.tecnicos
+                : state.tecnicos.filter(t => _avTecsFiltro.has(t.id));
+            if (!state.tecnicos.length) {
                 grid.innerHTML = '<p style="color:#64748b;text-align:center;margin-top:80px;font-size:14px">Nenhum técnico cadastrado.</p>';
+                return;
+            }
+            if (!tecs.length) {
+                grid.innerHTML = '<p style="color:#64748b;text-align:center;margin-top:80px;font-size:14px">Nenhum técnico selecionado no filtro.</p>';
                 return;
             }
 
