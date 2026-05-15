@@ -351,6 +351,13 @@
                         <p>Selecione uma OS na lista lateral para ver detalhes e atribuir técnicos.</p>
                     </div>
                 </div>
+
+                <!-- Controle de tema do mapa -->
+                <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 glass-panel rounded-full px-2 py-1.5 flex items-center gap-1 shadow-lg">
+                    <button onclick="trocarTemaMapa('escuro')" id="btn-mapa-escuro" class="mapa-tema-btn px-3 py-1 rounded-full text-xs font-bold transition bg-slate-700 text-white"><i class="fas fa-moon mr-1"></i>Escuro</button>
+                    <button onclick="trocarTemaMapa('claro')" id="btn-mapa-claro" class="mapa-tema-btn px-3 py-1 rounded-full text-xs font-bold transition text-slate-400 hover:text-white"><i class="fas fa-sun mr-1"></i>Claro</button>
+                    <button onclick="trocarTemaMapa('terrestre')" id="btn-mapa-terrestre" class="mapa-tema-btn px-3 py-1 rounded-full text-xs font-bold transition text-slate-400 hover:text-white"><i class="fas fa-satellite mr-1"></i>Terrestre</button>
+                </div>
             </div>
 
             <!-- TAB: TÉCNICOS E AGENDA -->
@@ -1027,16 +1034,35 @@ service cloud.firestore {
         }
 
         // ── MAPA ──────────────────────────────────────────────────
-        let mapa, markerGroup;
+        let mapa, markerGroup, _tileLayer, _temaMapa = 'escuro';
+
+        const _TILES = {
+            escuro:     { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',   attr: '&copy; OpenStreetMap &copy; CartoDB' },
+            claro:      { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',  attr: '&copy; OpenStreetMap &copy; CartoDB' },
+            terrestre:  { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr: '&copy; Esri' }
+        };
+
         function initMap() {
             if (mapa) return;
             const container = document.getElementById('mapa-atribuicao');
             if (!container) return;
             mapa = L.map('mapa-atribuicao').setView([-18.91, -48.27], 12);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap'
-            }).addTo(mapa);
+            _tileLayer = L.tileLayer(_TILES.escuro.url, { attribution: _TILES.escuro.attr }).addTo(mapa);
             markerGroup = L.featureGroup().addTo(mapa);
+        }
+
+        function trocarTemaMapa(tema) {
+            if (!mapa || _temaMapa === tema) return;
+            _temaMapa = tema;
+            if (_tileLayer) mapa.removeLayer(_tileLayer);
+            _tileLayer = L.tileLayer(_TILES[tema].url, { attribution: _TILES[tema].attr }).addTo(mapa);
+            _tileLayer.bringToBack();
+            document.querySelectorAll('.mapa-tema-btn').forEach(b => {
+                b.classList.remove('bg-slate-700', 'text-white');
+                b.classList.add('text-slate-400');
+            });
+            const ativo = document.getElementById('btn-mapa-' + tema);
+            if (ativo) { ativo.classList.add('bg-slate-700', 'text-white'); ativo.classList.remove('text-slate-400'); }
         }
 
         // ── ASSINATURA ────────────────────────────────────────────
