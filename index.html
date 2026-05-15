@@ -442,9 +442,9 @@
 
                 <!-- Controle de tema do mapa -->
                 <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 glass-panel rounded-full px-2 py-1.5 flex items-center gap-1 shadow-lg">
-                    <button onclick="trocarTemaMapa('escuro')" id="btn-mapa-escuro" class="mapa-tema-btn px-3 py-1 rounded-full text-xs font-bold transition bg-slate-700 text-white"><i class="fas fa-moon mr-1"></i>Escuro</button>
+                    <button onclick="trocarTemaMapa('escuro')" id="btn-mapa-escuro" class="mapa-tema-btn px-3 py-1 rounded-full text-xs font-bold transition text-slate-400 hover:text-white"><i class="fas fa-moon mr-1"></i>Escuro</button>
                     <button onclick="trocarTemaMapa('claro')" id="btn-mapa-claro" class="mapa-tema-btn px-3 py-1 rounded-full text-xs font-bold transition text-slate-400 hover:text-white"><i class="fas fa-sun mr-1"></i>Claro</button>
-                    <button onclick="trocarTemaMapa('terrestre')" id="btn-mapa-terrestre" class="mapa-tema-btn px-3 py-1 rounded-full text-xs font-bold transition text-slate-400 hover:text-white"><i class="fas fa-satellite mr-1"></i>Terrestre</button>
+                    <button onclick="trocarTemaMapa('terrestre')" id="btn-mapa-terrestre" class="mapa-tema-btn px-3 py-1 rounded-full text-xs font-bold transition bg-slate-700 text-white"><i class="fas fa-satellite mr-1"></i>Terrestre</button>
                     <span class="w-px h-4 bg-slate-600 mx-1"></span>
                     <button onclick="toggleRotasTodas()" id="btn-rotas-todas" class="px-3 py-1 rounded-full text-xs font-bold transition text-slate-400 hover:text-white"><i class="fas fa-route mr-1"></i>Rotas</button>
                 </div>
@@ -1149,7 +1149,7 @@ service cloud.firestore {
         }
 
         // ── MAPA ──────────────────────────────────────────────────
-        let mapa, markerGroup, _tileLayer, _temaMapa = 'escuro';
+        let mapa, markerGroup, _tileLayer, _temaMapa = 'terrestre';
 
         const _TILES = {
             escuro:     { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',   attr: '&copy; OpenStreetMap &copy; CartoDB' },
@@ -1162,7 +1162,7 @@ service cloud.firestore {
             const container = document.getElementById('mapa-atribuicao');
             if (!container) return;
             mapa = L.map('mapa-atribuicao').setView([-18.91, -48.27], 12);
-            _tileLayer = L.tileLayer(_TILES.escuro.url, { attribution: _TILES.escuro.attr }).addTo(mapa);
+            _tileLayer = L.tileLayer(_TILES.terrestre.url, { attribution: _TILES.terrestre.attr }).addTo(mapa);
             markerGroup = L.featureGroup().addTo(mapa);
         }
 
