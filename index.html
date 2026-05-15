@@ -28,6 +28,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
@@ -242,29 +245,68 @@
 
         <main class="flex-1 max-w-7xl mx-auto w-full p-4 sm:p-6">
 
-            <!-- TAB: DASHBOARD & CADASTRO -->
+            <!-- TAB: DASHBOARD -->
             <div id="tab-dashboard" class="tab-content active animate-fade">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div class="glass-card p-4 rounded-2xl">
-                        <div class="text-amber-400 mb-1"><i class="fas fa-inbox text-xl"></i></div>
-                        <div class="text-3xl font-black" id="stat-abertas">0</div>
-                        <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Abertas</div>
+
+                <!-- Filtro de período -->
+                <div class="glass-panel rounded-2xl p-3 mb-4 flex flex-wrap items-center gap-2">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Período:</span>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="setDashPeriod('hoje')"  id="dash-btn-hoje"  class="dash-period-btn px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 transition">Hoje</button>
+                        <button onclick="setDashPeriod('7d')"    id="dash-btn-7d"    class="dash-period-btn px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 transition">7 dias</button>
+                        <button onclick="setDashPeriod('30d')"   id="dash-btn-30d"   class="dash-period-btn px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 transition">30 dias</button>
+                        <button onclick="setDashPeriod('mes')"   id="dash-btn-mes"   class="dash-period-btn px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 transition">Este mês</button>
+                        <button onclick="setDashPeriod('tudo')"  id="dash-btn-tudo"  class="dash-period-btn px-3 py-1.5 rounded-lg text-xs font-bold border border-indigo-500 bg-indigo-600 text-white transition">Tudo</button>
                     </div>
-                    <div class="glass-card p-4 rounded-2xl">
-                        <div class="text-blue-400 mb-1"><i class="fas fa-route text-xl"></i></div>
-                        <div class="text-3xl font-black" id="stat-atribuidas">0</div>
-                        <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Atribuídas</div>
+                    <div class="flex items-center gap-2 ml-auto">
+                        <input type="date" id="dash-data-ini" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-indigo-500 text-slate-300" onchange="setDashPeriod('custom')">
+                        <span class="text-slate-500 text-xs font-bold">→</span>
+                        <input type="date" id="dash-data-fim" class="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-indigo-500 text-slate-300" onchange="setDashPeriod('custom')">
                     </div>
-                    <div class="glass-card p-4 rounded-2xl">
-                        <div class="text-emerald-400 mb-1"><i class="fas fa-check-double text-xl"></i></div>
-                        <div class="text-3xl font-black" id="stat-concluidas">0</div>
-                        <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Concluídas</div>
+                </div>
+
+                <!-- KPIs -->
+                <div id="dash-kpis" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4"></div>
+
+                <!-- Gráficos: Donut status + Donut técnicos -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="glass-panel rounded-2xl p-5">
+                        <h3 class="font-bold text-sm mb-0.5 flex items-center gap-2"><i class="fas fa-chart-pie text-indigo-400"></i> Distribuição por Status</h3>
+                        <p class="text-[10px] text-slate-500 mb-3">Proporção de OSs por estado no período</p>
+                        <div style="position:relative;height:200px"><canvas id="chart-status"></canvas></div>
                     </div>
-                    <div class="glass-card p-4 rounded-2xl">
-                        <div class="text-purple-400 mb-1"><i class="fas fa-users text-xl"></i></div>
-                        <div class="text-3xl font-black" id="stat-tecnicos">0</div>
-                        <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">Técnicos Ativos</div>
+                    <div class="glass-panel rounded-2xl p-5">
+                        <h3 class="font-bold text-sm mb-0.5 flex items-center gap-2"><i class="fas fa-hard-hat text-emerald-400"></i> OSs por Técnico</h3>
+                        <p class="text-[10px] text-slate-500 mb-3">Participação de cada técnico no período</p>
+                        <div style="position:relative;height:200px"><canvas id="chart-tec-pizza"></canvas></div>
                     </div>
+                </div>
+
+                <!-- Evolução diária -->
+                <div class="glass-panel rounded-2xl p-5 mb-4">
+                    <h3 class="font-bold text-sm mb-0.5 flex items-center gap-2"><i class="fas fa-chart-line text-blue-400"></i> Evolução Diária</h3>
+                    <p class="text-[10px] text-slate-500 mb-3">OSs criadas vs. concluídas por dia no período</p>
+                    <div style="position:relative;height:220px"><canvas id="chart-evolucao"></canvas></div>
+                </div>
+
+                <!-- Horário + Desempenho por técnico -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="glass-panel rounded-2xl p-5">
+                        <h3 class="font-bold text-sm mb-0.5 flex items-center gap-2"><i class="fas fa-clock text-amber-400"></i> Distribuição por Horário</h3>
+                        <p class="text-[10px] text-slate-500 mb-3">Concentração de agendamentos por hora do dia</p>
+                        <div style="position:relative;height:200px"><canvas id="chart-hora"></canvas></div>
+                    </div>
+                    <div class="glass-panel rounded-2xl p-5">
+                        <h3 class="font-bold text-sm mb-0.5 flex items-center gap-2"><i class="fas fa-chart-bar text-rose-400"></i> Desempenho por Técnico</h3>
+                        <p class="text-[10px] text-slate-500 mb-3">Concluídas vs. não executadas por técnico</p>
+                        <div style="position:relative;height:200px"><canvas id="chart-tec-bar"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- Ranking table -->
+                <div class="glass-panel rounded-2xl p-5 mb-4">
+                    <h3 class="font-bold text-sm mb-4 flex items-center gap-2"><i class="fas fa-trophy text-amber-400"></i> Ranking de Técnicos no Período</h3>
+                    <div id="dash-ranking" class="overflow-x-auto"></div>
                 </div>
 
             </div>
@@ -1122,6 +1164,9 @@ service cloud.firestore {
                 if (navEl) document.getElementById('tab-os').style.top = navEl.offsetHeight + 'px';
                 setTimeout(() => { if (mapa) mapa.invalidateSize(); else initMap(); renderMapaOSs(); }, 200);
             }
+            if (id === 'tab-dashboard') {
+                renderDashboard();
+            }
             if (id === 'tab-tecnicos') {
                 renderSenhasGestor();
             }
@@ -1490,12 +1535,8 @@ service cloud.firestore {
         function atualizarDashboard() {
             const abertas    = state.oss.filter(o => o.status === 'aberta').length;
             const atribuidas = state.oss.filter(o => o.status === 'atribuida').length;
-            const concluidas = state.oss.filter(o => o.status === 'fechada').length;
-            document.getElementById('stat-abertas').textContent    = abertas;
-            document.getElementById('stat-atribuidas').textContent = atribuidas;
-            document.getElementById('stat-concluidas').textContent = concluidas;
-            document.getElementById('stat-tecnicos').textContent   = state.tecnicos.length;
             document.getElementById('badge-pendentes').textContent = abertas + atribuidas;
+            renderDashboard();
         }
 
         function colarAutoPreenchimento() {
@@ -2765,6 +2806,280 @@ service cloud.firestore {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
             }
+        }
+
+        // ── DASHBOARD ─────────────────────────────────────────────
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+
+        let _dashPeriod = 'tudo', _dashIni = null, _dashFim = null;
+        const _charts = {};
+
+        function _parseDateBR(str) {
+            if (!str) return null;
+            const m = String(str).match(/(\d{2})\/(\d{2})\/(\d{4})/);
+            if (!m) return null;
+            return new Date(+m[3], +m[2]-1, +m[1]);
+        }
+        function _dateKey(d) { return d.toLocaleDateString('pt-BR'); }
+        function _addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+
+        function _haversineKm(lat1, lon1, lat2, lon2) {
+            const R = 6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+            return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+        function _parseCoords(str) {
+            if (!str) return null;
+            const p = String(str).split(',').map(s => parseFloat(s.trim()));
+            return (p.length>=2 && !isNaN(p[0]) && !isNaN(p[1])) ? {lat:p[0],lng:p[1]} : null;
+        }
+        function _hexToRgba(hex, a) {
+            hex = (hex||'#6366f1').replace('#','');
+            if (hex.length===3) hex=hex.split('').map(c=>c+c).join('');
+            const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+            return `rgba(${r},${g},${b},${a})`;
+        }
+        function _destroyChart(k) { if (_charts[k]) { _charts[k].destroy(); delete _charts[k]; } }
+
+        function _dashOSInPeriod(os) {
+            if (!_dashIni && !_dashFim) return true;
+            const d = _parseDateBR(os.dataCriacao);
+            if (!d) return true;
+            if (_dashIni) { const i=new Date(_dashIni); i.setHours(0,0,0,0); if (d<i) return false; }
+            if (_dashFim) { const f=new Date(_dashFim); f.setHours(23,59,59,999); if (d>f) return false; }
+            return true;
+        }
+
+        function setDashPeriod(p) {
+            _dashPeriod = p;
+            document.querySelectorAll('.dash-period-btn').forEach(b => {
+                b.classList.remove('bg-indigo-600','border-indigo-500','text-white');
+                b.classList.add('bg-slate-800','border-slate-700','text-slate-400');
+            });
+            const ab = document.getElementById('dash-btn-'+p);
+            if (ab) { ab.classList.add('bg-indigo-600','border-indigo-500','text-white'); ab.classList.remove('bg-slate-800','border-slate-700','text-slate-400'); }
+
+            const hoje = new Date(); hoje.setHours(0,0,0,0);
+            if      (p==='hoje') { _dashIni=new Date(hoje); _dashFim=new Date(hoje); }
+            else if (p==='7d')   { _dashFim=new Date(hoje); _dashIni=_addDays(hoje,-6); }
+            else if (p==='30d')  { _dashFim=new Date(hoje); _dashIni=_addDays(hoje,-29); }
+            else if (p==='mes')  { _dashFim=new Date(hoje); _dashIni=new Date(hoje.getFullYear(),hoje.getMonth(),1); }
+            else if (p==='tudo') { _dashIni=null; _dashFim=null; }
+            else if (p==='custom') {
+                const is=document.getElementById('dash-data-ini')?.value;
+                const fs=document.getElementById('dash-data-fim')?.value;
+                _dashIni = is ? new Date(is+'T00:00:00') : null;
+                _dashFim = fs ? new Date(fs+'T23:59:59') : null;
+            }
+
+            if (p!=='custom') {
+                const ie=document.getElementById('dash-data-ini'), fe=document.getElementById('dash-data-fim');
+                if (ie) ie.value = _dashIni ? _dashIni.toISOString().slice(0,10) : '';
+                if (fe) fe.value = _dashFim ? _dashFim.toISOString().slice(0,10) : '';
+            }
+            renderDashboard();
+        }
+
+        function renderDashboard() {
+            if (!document.getElementById('dash-kpis')) return;
+            const oss = state.oss.filter(_dashOSInPeriod);
+            _renderDashKPIs(oss);
+            _renderChartStatus(oss);
+            _renderChartTecPizza(oss);
+            _renderChartEvolucao();
+            _renderChartHora(oss);
+            _renderChartTecBar(oss);
+            _renderDashRanking(oss);
+        }
+
+        function _renderDashKPIs(oss) {
+            const total      = oss.length;
+            const abertas    = oss.filter(o=>o.status==='aberta').length;
+            const atribuidas = oss.filter(o=>o.status==='atribuida').length;
+            const concluidas = oss.filter(o=>o.status==='fechada').length;
+            const naoExec    = oss.filter(o=>o.motivoNaoExecutado).length;
+            const taxa       = total>0 ? Math.round(concluidas/total*100) : 0;
+            const kpis = [
+                {label:'Total no Período', value:total,       icon:'fa-list-check',   cor:'text-slate-300'},
+                {label:'Abertas',          value:abertas,     icon:'fa-inbox',        cor:'text-amber-400'},
+                {label:'Atribuídas',       value:atribuidas,  icon:'fa-route',        cor:'text-blue-400'},
+                {label:'Concluídas',       value:concluidas,  icon:'fa-check-double', cor:'text-emerald-400'},
+                {label:'Não Executadas',   value:naoExec,     icon:'fa-ban',          cor:'text-rose-400'},
+                {label:'Taxa Conclusão',   value:taxa+'%',    icon:'fa-chart-pie',    cor:'text-indigo-400'},
+            ];
+            document.getElementById('dash-kpis').innerHTML = kpis.map(k=>`
+                <div class="glass-card p-4 rounded-2xl">
+                    <div class="${k.cor} mb-1"><i class="fas ${k.icon} text-xl"></i></div>
+                    <div class="text-2xl font-black">${k.value}</div>
+                    <div class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-0.5">${k.label}</div>
+                </div>`).join('');
+            document.getElementById('badge-pendentes').textContent = abertas+atribuidas;
+        }
+
+        function _renderChartStatus(oss) {
+            _destroyChart('status');
+            const ctx=document.getElementById('chart-status')?.getContext('2d'); if(!ctx)return;
+            const a=oss.filter(o=>o.status==='aberta').length;
+            const b=oss.filter(o=>o.status==='atribuida').length;
+            const c=oss.filter(o=>o.status==='fechada').length;
+            _charts['status']=new Chart(ctx,{type:'doughnut',data:{
+                labels:['Abertas','Atribuídas','Concluídas'],
+                datasets:[{data:[a,b,c],
+                    backgroundColor:['rgba(245,158,11,0.8)','rgba(59,130,246,0.8)','rgba(16,185,129,0.8)'],
+                    borderColor:['#f59e0b','#3b82f6','#10b981'],borderWidth:2,hoverOffset:10}]
+            },options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
+                plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:11},padding:14}},
+                tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw} OSs`}}}}});
+        }
+
+        function _renderChartTecPizza(oss) {
+            _destroyChart('tecpizza');
+            const ctx=document.getElementById('chart-tec-pizza')?.getContext('2d'); if(!ctx)return;
+            const map={};
+            oss.forEach(o=>(o.tecnicosIds||[]).forEach(tid=>{ map[tid]=(map[tid]||0)+1; }));
+            const tecs=state.tecnicos.filter(t=>map[t.id]);
+            if(!tecs.length){
+                _charts['tecpizza']=new Chart(ctx,{type:'doughnut',data:{labels:['Sem dados'],datasets:[{data:[1],backgroundColor:['rgba(100,116,139,0.3)'],borderColor:['#475569'],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{labels:{color:'#94a3b8'}}}}});
+                return;
+            }
+            _charts['tecpizza']=new Chart(ctx,{type:'doughnut',data:{
+                labels:tecs.map(t=>t.nome),
+                datasets:[{data:tecs.map(t=>map[t.id]||0),
+                    backgroundColor:tecs.map(t=>_hexToRgba(t.cor,0.8)),
+                    borderColor:tecs.map(t=>t.cor||'#6366f1'),borderWidth:2,hoverOffset:10}]
+            },options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
+                plugins:{legend:{position:'bottom',labels:{color:'#94a3b8',font:{size:11},padding:10}},
+                tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw} OSs`}}}}});
+        }
+
+        function _renderChartEvolucao() {
+            _destroyChart('evolucao');
+            const ctx=document.getElementById('chart-evolucao')?.getContext('2d'); if(!ctx)return;
+            const hoje=new Date(); hoje.setHours(0,0,0,0);
+            const ini = _dashIni ? new Date(_dashIni) : _addDays(hoje,-29);
+            const fim = _dashFim ? new Date(_dashFim) : new Date(hoje);
+            const labels=[], criadasMap={}, conclMap={};
+            let cur=new Date(ini);
+            while(cur<=fim){ const k=_dateKey(cur); labels.push(k); criadasMap[k]=0; conclMap[k]=0; cur=_addDays(cur,1); }
+            state.oss.forEach(o=>{ if(criadasMap.hasOwnProperty(o.dataCriacao)) criadasMap[o.dataCriacao]++; });
+            state.oss.filter(o=>o.status==='fechada'&&o.encerradoEm).forEach(o=>{
+                const d=_parseDateBR(o.encerradoEm); if(d){const k=_dateKey(d);if(conclMap.hasOwnProperty(k))conclMap[k]++;}
+            });
+            const maxLen=60;
+            const step=labels.length>maxLen ? Math.ceil(labels.length/maxLen) : 1;
+            const dispLabels=labels.map((l,i)=>i%step===0?l.slice(0,5):'');
+            _charts['evolucao']=new Chart(ctx,{type:'line',data:{labels:dispLabels,datasets:[
+                {label:'Criadas',data:labels.map(k=>criadasMap[k]),borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.12)',fill:true,tension:0.4,pointRadius:2,pointBackgroundColor:'#6366f1'},
+                {label:'Concluídas',data:labels.map(k=>conclMap[k]),borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.12)',fill:true,tension:0.4,pointRadius:2,pointBackgroundColor:'#10b981'}
+            ]},options:{responsive:true,maintainAspectRatio:false,
+                scales:{x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#475569',font:{size:9},maxRotation:0}},
+                        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b',font:{size:10},stepSize:1},beginAtZero:true}},
+                plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}},tooltip:{mode:'index',intersect:false}}}});
+        }
+
+        function _renderChartHora(oss) {
+            _destroyChart('hora');
+            const ctx=document.getElementById('chart-hora')?.getContext('2d'); if(!ctx)return;
+            const counts=new Array(24).fill(0);
+            oss.forEach(o=>{ if(o.tratativa?.hora){ const h=parseInt(o.tratativa.hora.split(':')[0]); if(h>=0&&h<24)counts[h]++; }});
+            _charts['hora']=new Chart(ctx,{type:'bar',data:{
+                labels:Array.from({length:24},(_,i)=>i.toString().padStart(2,'0')+'h'),
+                datasets:[{label:'Agendamentos',data:counts,
+                    backgroundColor:'rgba(245,158,11,0.65)',borderColor:'#f59e0b',borderWidth:1,borderRadius:3}]
+            },options:{responsive:true,maintainAspectRatio:false,
+                scales:{x:{grid:{display:false},ticks:{color:'#64748b',font:{size:9},maxRotation:0}},
+                        y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b',font:{size:10},stepSize:1},beginAtZero:true}},
+                plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw} OS(s)`}}}}});
+        }
+
+        function _renderChartTecBar(oss) {
+            _destroyChart('tecbar');
+            const ctx=document.getElementById('chart-tec-bar')?.getContext('2d'); if(!ctx)return;
+            const cm={}, nm={};
+            oss.forEach(o=>(o.tecnicosIds||[]).forEach(tid=>{
+                if(o.status==='fechada') cm[tid]=(cm[tid]||0)+1;
+                if(o.motivoNaoExecutado) nm[tid]=(nm[tid]||0)+1;
+            }));
+            const tecs=state.tecnicos.filter(t=>(cm[t.id]||0)+(nm[t.id]||0)>0);
+            if(!tecs.length){_destroyChart('tecbar');return;}
+            _charts['tecbar']=new Chart(ctx,{type:'bar',data:{
+                labels:tecs.map(t=>t.nome.split(' ')[0]),
+                datasets:[
+                    {label:'Concluídas',data:tecs.map(t=>cm[t.id]||0),backgroundColor:'rgba(16,185,129,0.75)',borderColor:'#10b981',borderWidth:1,borderRadius:3},
+                    {label:'Não Executadas',data:tecs.map(t=>nm[t.id]||0),backgroundColor:'rgba(239,68,68,0.75)',borderColor:'#ef4444',borderWidth:1,borderRadius:3}
+                ]
+            },options:{responsive:true,maintainAspectRatio:false,
+                scales:{x:{stacked:true,grid:{display:false},ticks:{color:'#94a3b8',font:{size:10}}},
+                        y:{stacked:true,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b',font:{size:10},stepSize:1},beginAtZero:true}},
+                plugins:{legend:{labels:{color:'#94a3b8',font:{size:11}}}}}});
+        }
+
+        function _calcKmTec(tecId, oss) {
+            const byDay={};
+            oss.filter(o=>(o.tecnicosIds||[]).includes(tecId)&&o.tratativa?.data&&o.coords).forEach(o=>{
+                const d=o.tratativa.data; if(!byDay[d])byDay[d]=[]; byDay[d].push(o);
+            });
+            let km=0;
+            Object.values(byDay).forEach(arr=>{
+                arr.sort((a,b)=>a.tratativa.hora.localeCompare(b.tratativa.hora));
+                for(let i=1;i<arr.length;i++){
+                    const c1=_parseCoords(arr[i-1].coords), c2=_parseCoords(arr[i].coords);
+                    if(c1&&c2) km+=_haversineKm(c1.lat,c1.lng,c2.lat,c2.lng);
+                }
+            });
+            return km;
+        }
+
+        function _renderDashRanking(oss) {
+            const el=document.getElementById('dash-ranking'); if(!el)return;
+            const rows=state.tecnicos.map(t=>{
+                const meus=oss.filter(o=>(o.tecnicosIds||[]).includes(t.id));
+                const total=meus.length, concl=meus.filter(o=>o.status==='fechada').length;
+                const naoExec=meus.filter(o=>o.motivoNaoExecutado).length;
+                const taxa=total>0?Math.round(concl/total*100):0;
+                const km=_calcKmTec(t.id, oss);
+                const dias=new Set(meus.filter(o=>o.tratativa?.data).map(o=>o.tratativa.data));
+                const media=dias.size>0?(total/dias.size).toFixed(1):'—';
+                return {t,total,concl,naoExec,taxa,km,media};
+            }).filter(r=>r.total>0).sort((a,b)=>b.concl-a.concl);
+
+            if(!rows.length){el.innerHTML='<p class="text-center text-xs text-slate-500 py-6">Nenhum dado para o período selecionado.</p>';return;}
+            const med=['🥇','🥈','🥉'];
+            el.innerHTML=`<table class="w-full text-xs min-w-[600px]">
+                <thead><tr class="text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-700">
+                    <th class="pb-2 text-left w-6">#</th>
+                    <th class="pb-2 text-left">Técnico</th>
+                    <th class="pb-2 text-center">Total</th>
+                    <th class="pb-2 text-center">Concluídas</th>
+                    <th class="pb-2 text-center">Não Exec.</th>
+                    <th class="pb-2 text-center">Taxa</th>
+                    <th class="pb-2 text-center">Km Est.</th>
+                    <th class="pb-2 text-center">Média/dia</th>
+                </tr></thead>
+                <tbody class="divide-y divide-slate-800/60">${rows.map((r,i)=>`
+                <tr class="hover:bg-slate-800/30 transition">
+                    <td class="py-3 pr-2 font-bold text-base">${med[i]||(i+1)}</td>
+                    <td class="py-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style="background:${r.t.cor||'#6366f1'}">${r.t.nome[0]}</div>
+                            <div><div class="font-bold text-slate-200">${r.t.nome}</div><div class="text-[9px] text-slate-500">${r.t.funcao||''}</div></div>
+                        </div>
+                    </td>
+                    <td class="py-3 text-center font-bold text-slate-300">${r.total}</td>
+                    <td class="py-3 text-center font-bold text-emerald-400">${r.concl}</td>
+                    <td class="py-3 text-center font-bold ${r.naoExec>0?'text-rose-400':'text-slate-600'}">${r.naoExec||'—'}</td>
+                    <td class="py-3 text-center">
+                        <div class="flex items-center gap-1.5 justify-center">
+                            <div class="h-1.5 rounded-full bg-slate-700 w-14 overflow-hidden">
+                                <div class="h-full rounded-full ${r.taxa>=70?'bg-emerald-500':r.taxa>=40?'bg-amber-500':'bg-rose-500'}" style="width:${r.taxa}%"></div>
+                            </div>
+                            <span class="font-bold text-slate-300 w-8 text-right">${r.taxa}%</span>
+                        </div>
+                    </td>
+                    <td class="py-3 text-center font-bold ${r.km>0?'text-blue-400':'text-slate-600'}">${r.km>0?r.km.toFixed(1)+' km':'—'}</td>
+                    <td class="py-3 text-center text-slate-400">${r.media}</td>
+                </tr>`).join('')}</tbody></table>`;
         }
 
         // ── INIT ──────────────────────────────────────────────────
