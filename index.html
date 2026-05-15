@@ -4024,9 +4024,18 @@ service cloud.firestore {
                 // OS blocks
                 let osBlocks = '';
                 for (const os of ossDoTec) {
-                    const hora   = os.tratativa?.hora || '08:00';
-                    const topPx  = Math.max(0, Math.min(_avHoraToY(hora), totalH - 44));
-                    const osCor  = _avOsColor(os);
+                    const hora    = os.tratativa?.hora    || '08:00';
+                    const horaFim = os.tratativa?.horaFim || null;
+                    const topPx   = Math.max(0, Math.min(_avHoraToY(hora), totalH - 44));
+                    const osCor   = _avOsColor(os);
+
+                    let blockH = _AV_PX_H - 6;
+                    if (horaFim && horaFim > hora) {
+                        const endY = _avHoraToY(horaFim);
+                        blockH = Math.max(_AV_PX_H - 6, Math.min(endY - topPx - 2, totalH - topPx - 4));
+                    }
+
+                    const horaLabel = horaFim && horaFim > hora ? `${hora} – ${horaFim}` : hora;
                     osBlocks += `<div class="av-os-block"
                         draggable="true"
                         ondragstart="avDragStart(event,'${os.id}')"
@@ -4034,13 +4043,13 @@ service cloud.firestore {
                         ondragover="event.preventDefault()"
                         onclick="avAbrirOsPanel('${os.id}')"
                         data-osid="${os.id}"
-                        style="position:absolute;top:${topPx}px;left:4px;right:4px;height:${_AV_PX_H-6}px;border-radius:8px;border:2px solid ${osCor};background:${osCor}22;padding:5px 7px;cursor:grab;z-index:5;overflow:hidden;box-sizing:border-box">
+                        style="position:absolute;top:${topPx}px;left:4px;right:4px;height:${blockH}px;border-radius:8px;border:2px solid ${osCor};background:${osCor}22;padding:5px 7px;cursor:grab;z-index:5;overflow:hidden;box-sizing:border-box">
                         <div style="display:flex;align-items:center;gap:4px;line-height:1.2">
                             <span style="font-size:11px;font-weight:700;color:${osCor}">#${os.id}</span>
                             <span style="width:6px;height:6px;border-radius:50%;background:${_tipoOsCor(os)};flex-shrink:0"></span>
                         </div>
                         <div style="font-size:11px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">${os.cliente||''}</div>
-                        <div style="font-size:10px;color:#94a3b8;line-height:1.2">${hora}</div>
+                        <div style="font-size:10px;color:#94a3b8;line-height:1.2">${horaLabel}</div>
                     </div>`;
                 }
 
@@ -4132,10 +4141,35 @@ service cloud.firestore {
                         </button>
                     </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
                     <p style="font-size:16px;font-weight:700;color:#f1f5f9;word-break:break-word;line-height:1.3;margin:0">${os.cliente||''}</p>
                     <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px;color:${_tipoOsCor(os)};background:${_tipoOsCor(os)}22;border:1px solid ${_tipoOsCor(os)}44;white-space:nowrap;flex-shrink:0"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${_tipoOsCor(os)};margin-right:4px;vertical-align:middle"></span>${_tipoOsLabel(os)}</span>
                 </div>
+                ${os.tratativa ? `
+                <div style="background:#0f172a;border-radius:10px;padding:10px 12px;margin-bottom:14px">
+                    <p style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px"><i class="fas fa-clock" style="margin-right:4px;opacity:.5"></i>Horário na Agenda</p>
+                    <div style="display:flex;align-items:flex-end;gap:8px">
+                        <div style="flex:1">
+                            <p style="font-size:9px;color:#64748b;margin-bottom:3px;font-weight:600">INÍCIO</p>
+                            <input type="time" id="av-hora-ini" value="${os.tratativa.hora||'08:00'}"
+                                style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#f1f5f9;font-size:13px;padding:5px 7px;outline:none;font-family:monospace;box-sizing:border-box"
+                                onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#334155'">
+                        </div>
+                        <div style="color:#475569;font-size:14px;padding-bottom:7px;flex-shrink:0">→</div>
+                        <div style="flex:1">
+                            <p style="font-size:9px;color:#64748b;margin-bottom:3px;font-weight:600">FIM <span style="color:#475569;font-weight:400">(opcional)</span></p>
+                            <input type="time" id="av-hora-fim" value="${os.tratativa.horaFim||''}"
+                                style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#f1f5f9;font-size:13px;padding:5px 7px;outline:none;font-family:monospace;box-sizing:border-box"
+                                onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#334155'">
+                        </div>
+                        <button onclick="avSalvarHorario('${os.id}')"
+                            style="height:32px;width:32px;border-radius:8px;background:rgba(99,102,241,.2);color:#818cf8;border:1px solid rgba(99,102,241,.3);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+                            title="Salvar horário"
+                            onmouseover="this.style.background='#4f46e5';this.style.color='#fff'" onmouseout="this.style.background='rgba(99,102,241,.2)';this.style.color='#818cf8'">
+                            <i class="fas fa-check" style="font-size:11px"></i>
+                        </button>
+                    </div>
+                </div>` : ''}
                 ${row('Falha / Descrição', os.falha, 'fas fa-exclamation-circle')}
                 ${row('Técnico(s)', tecNomes || '—')}
                 ${os.tratativa ? row('Agendado para', `${os.tratativa.data} às ${os.tratativa.hora}`, 'fas fa-calendar-check') : ''}
@@ -4153,6 +4187,30 @@ service cloud.firestore {
                 </button>`;
 
             p.classList.remove('hidden');
+        }
+
+        async function avSalvarHorario(osId) {
+            const os = state.oss.find(o => String(o.id) === String(osId));
+            if (!os || !os.tratativa) return;
+
+            const horaIni = document.getElementById('av-hora-ini')?.value || os.tratativa.hora;
+            const horaFim = document.getElementById('av-hora-fim')?.value || '';
+
+            if (horaFim && horaFim <= horaIni) {
+                alert('Hora final deve ser depois da hora inicial.');
+                return;
+            }
+
+            const novaTratativa = { ...os.tratativa, hora: horaIni };
+            if (horaFim) novaTratativa.horaFim = horaFim;
+            else delete novaTratativa.horaFim;
+
+            try {
+                await _updateOS(osId, { tratativa: novaTratativa });
+                avAbrirOsPanel(osId);
+            } catch(err) {
+                alert('Erro ao salvar horário: ' + err.message);
+            }
         }
 
         // ── AGENDA VISUAL DRAG & DROP ─────────────────────────────
@@ -4227,7 +4285,21 @@ service cloud.firestore {
 
             // If somehow no technician remains, treat as "aberta" reset
             const novoStatus = novosTecs.length === 0 ? 'aberta' : 'atribuida';
-            const novaTratativa = novosTecs.length === 0 ? null : { ...(os.tratativa || {}), data: dia, hora };
+            let novaTratativa = null;
+            if (novosTecs.length > 0) {
+                novaTratativa = { ...(os.tratativa || {}), data: dia, hora };
+                // Preserve duration when dragging
+                if (os.tratativa?.horaFim && os.tratativa.horaFim > os.tratativa.hora) {
+                    const [ih, im] = os.tratativa.hora.split(':').map(Number);
+                    const [fh, fm] = os.tratativa.horaFim.split(':').map(Number);
+                    const durMins  = (fh * 60 + fm) - (ih * 60 + im);
+                    const [nh, nm] = hora.split(':').map(Number);
+                    const fimMins  = nh * 60 + nm + durMins;
+                    const fimH     = Math.min(Math.floor(fimMins / 60), _AV_H_FIM);
+                    const fimM     = fimMins % 60;
+                    novaTratativa.horaFim = `${String(fimH).padStart(2,'0')}:${String(fimM).padStart(2,'0')}`;
+                }
+            }
 
             try {
                 await _updateOS(osId, {
