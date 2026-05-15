@@ -100,6 +100,39 @@
         .leaflet-tooltip { background: #1e293b; color: #f8fafc; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.4); font-size: 12px; padding: 5px 10px; }
         .leaflet-tooltip::before { border-right-color: #1e293b; }
 
+        /* ── MAPA MOBILE ── */
+        @media (max-width: 639px) {
+            #mapa-mobile-bar { display: flex !important; }
+            .mapa-controles-desktop { display: none !important; }
+
+            #painel-lista-os {
+                top: auto !important; left: 0 !important; right: 0 !important;
+                bottom: 56px !important; width: 100% !important;
+                max-height: 55vh !important;
+                border-radius: 16px 16px 0 0 !important;
+                transform: translateY(calc(100% + 60px));
+                transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+            }
+            #painel-lista-os.mob-open  { transform: translateY(0) !important; }
+
+            #painel-atribuicao {
+                top: auto !important; left: 0 !important; right: 0 !important;
+                bottom: 56px !important; width: 100% !important;
+                max-height: 65vh !important;
+                border-radius: 16px 16px 0 0 !important;
+                transform: translateY(calc(100% + 60px));
+                transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+            }
+            #painel-atribuicao.mob-open { transform: translateY(0) !important; }
+
+            #painel-lista-os::before, #painel-atribuicao::before {
+                content: ''; display: block; width: 36px; height: 4px;
+                background: rgba(148,163,184,.35); border-radius: 2px;
+                margin: 0 auto 10px;
+            }
+        }
+        @media (min-width: 640px) { #mapa-mobile-bar { display: none !important; } }
+
         .av-tec-col.av-drop-zone { background: rgba(99,102,241,0.09) !important; }
         .av-os-block { transition: opacity 0.15s, filter 0.15s; user-select: none; }
         .av-os-block:hover { filter: brightness(1.2); }
@@ -429,7 +462,7 @@
                 <div id="mapa-atribuicao" class="w-full h-full bg-slate-800"></div>
 
                 <!-- Painel flutuante ESQUERDA: Lista de OS -->
-                <div class="absolute top-4 left-4 z-10 flex flex-col overflow-hidden rounded-2xl glass-panel" style="width: 17rem; max-height: calc(100% - 2rem);">
+                <div id="painel-lista-os" class="absolute top-4 left-4 z-10 flex flex-col overflow-hidden rounded-2xl glass-panel" style="width: 17rem; max-height: calc(100% - 2rem);">
                     <div class="p-3 border-b border-slate-700/50 flex gap-2 flex-shrink-0">
                         <button onclick="filtrarFilaOS('aberta')" id="btn-fila-aberta" class="flex-1 py-1.5 rounded-lg bg-indigo-500 text-white text-xs font-bold">Abertas</button>
                         <button onclick="filtrarFilaOS('atribuida')" id="btn-fila-atribuida" class="flex-1 py-1.5 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold">Atribuídas</button>
@@ -446,13 +479,33 @@
                     </div>
                 </div>
 
-                <!-- Controle de tema do mapa -->
-                <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 glass-panel rounded-full px-2 py-1.5 flex items-center gap-1 shadow-lg">
+                <!-- Controle de tema do mapa (desktop) -->
+                <div class="mapa-controles-desktop absolute bottom-6 left-1/2 -translate-x-1/2 z-10 glass-panel rounded-full px-2 py-1.5 flex items-center gap-1 shadow-lg">
                     <button onclick="trocarTemaMapa('escuro')" id="btn-mapa-escuro" class="mapa-tema-btn px-3 py-1 rounded-full text-xs font-bold transition text-slate-400 hover:text-white"><i class="fas fa-moon mr-1"></i>Escuro</button>
                     <button onclick="trocarTemaMapa('claro')" id="btn-mapa-claro" class="mapa-tema-btn px-3 py-1 rounded-full text-xs font-bold transition text-slate-400 hover:text-white"><i class="fas fa-sun mr-1"></i>Claro</button>
                     <button onclick="trocarTemaMapa('terrestre')" id="btn-mapa-terrestre" class="mapa-tema-btn px-3 py-1 rounded-full text-xs font-bold transition bg-slate-700 text-white"><i class="fas fa-satellite mr-1"></i>Terrestre</button>
                     <span class="w-px h-4 bg-slate-600 mx-1"></span>
                     <button onclick="toggleRotasTodas()" id="btn-rotas-todas" class="px-3 py-1 rounded-full text-xs font-bold transition text-slate-400 hover:text-white"><i class="fas fa-route mr-1"></i>Rotas</button>
+                </div>
+
+                <!-- Barra inferior mobile -->
+                <div id="mapa-mobile-bar" style="display:none;position:absolute;bottom:0;left:0;right:0;height:56px;z-index:20;background:rgba(15,23,42,0.96);backdrop-filter:blur(8px);border-top:1px solid rgba(100,116,139,0.3);align-items:center;justify-content:space-around">
+                    <button onclick="toggleMobPanel('painel-lista-os')" id="mob-btn-lista" style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 20px;color:#94a3b8;background:none;border:none;cursor:pointer">
+                        <i class="fas fa-list" style="font-size:17px"></i>
+                        <span style="font-size:10px;font-weight:700">Lista</span>
+                    </button>
+                    <button onclick="toggleMobPanel('painel-atribuicao')" id="mob-btn-detalhes" style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 20px;color:#94a3b8;background:none;border:none;cursor:pointer">
+                        <i class="fas fa-clipboard-list" style="font-size:17px"></i>
+                        <span style="font-size:10px;font-weight:700">Detalhes</span>
+                    </button>
+                    <button onclick="trocarTemaMapa(_temaMapa==='terrestre'?'escuro':'terrestre')" style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 16px;color:#94a3b8;background:none;border:none;cursor:pointer">
+                        <i class="fas fa-satellite" style="font-size:17px"></i>
+                        <span style="font-size:10px;font-weight:700">Tema</span>
+                    </button>
+                    <button onclick="toggleRotasTodas()" style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 16px;color:#94a3b8;background:none;border:none;cursor:pointer">
+                        <i class="fas fa-route" style="font-size:17px"></i>
+                        <span style="font-size:10px;font-weight:700">Rotas</span>
+                    </button>
                 </div>
             </div>
 
@@ -2065,8 +2118,28 @@ service cloud.firestore {
         }
 
         let _atribTecs = [], _atribData = '', _atribHora = '';
+
+        function toggleMobPanel(id) {
+            const panel = document.getElementById(id);
+            if (!panel) return;
+            const other = id === 'painel-lista-os' ? 'painel-atribuicao' : 'painel-lista-os';
+            document.getElementById(other)?.classList.remove('mob-open');
+            panel.classList.toggle('mob-open');
+            _syncMobBtns();
+        }
+        function _syncMobBtns() {
+            const listaOpen = document.getElementById('painel-lista-os')?.classList.contains('mob-open');
+            const detOpen   = document.getElementById('painel-atribuicao')?.classList.contains('mob-open');
+            const bL = document.getElementById('mob-btn-lista');
+            const bD = document.getElementById('mob-btn-detalhes');
+            if (bL) bL.style.color = listaOpen ? '#818cf8' : '#94a3b8';
+            if (bD) bD.style.color = detOpen   ? '#818cf8' : '#94a3b8';
+        }
+
         function fecharPainelAtribuicao() {
             document.getElementById('painel-atribuicao').innerHTML = '<p class="text-slate-400 text-sm text-center mt-8">Selecione uma OS na lista lateral para ver detalhes e atribuir técnicos.</p>';
+            document.getElementById('painel-atribuicao')?.classList.remove('mob-open');
+            _syncMobBtns();
         }
 
         function forcarAtualizacao(btn) {
@@ -2207,6 +2280,13 @@ service cloud.firestore {
             if (mapa && os.coords) {
                 const [lat, lng] = os.coords.split(',').map(Number);
                 if (lat && lng) mapa.setView([lat, lng], 14);
+            }
+
+            // Em mobile, abre o painel de detalhes automaticamente
+            if (window.innerWidth < 640) {
+                document.getElementById('painel-lista-os')?.classList.remove('mob-open');
+                document.getElementById('painel-atribuicao')?.classList.add('mob-open');
+                _syncMobBtns();
             }
 
             // Renderiza info de distâncias após montar o painel
