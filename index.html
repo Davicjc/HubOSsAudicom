@@ -365,7 +365,17 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Local (Endereço)</label>
-                            <input type="text" id="os-local" placeholder="Rua, número, bairro, cidade..." class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 focus:border-emerald-500 outline-none text-sm">
+                            <input type="text" id="os-local" placeholder="Rua, número, bairro, cidade..." class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 focus:border-emerald-500 outline-none text-sm" onpaste="setTimeout(verificarCoordsNoLocal,50)" oninput="verificarCoordsNoLocal()">
+                            <div id="os-local-coords-sugestao" class="hidden mt-1.5 bg-indigo-500/10 border border-indigo-500/30 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <i class="fas fa-map-marker-alt text-indigo-400 flex-shrink-0 text-xs"></i>
+                                    <span class="text-xs text-indigo-300">Coordenadas detectadas: <span id="os-local-coords-valor" class="font-mono font-bold text-indigo-200"></span></span>
+                                </div>
+                                <div class="flex gap-1.5 flex-shrink-0">
+                                    <button type="button" onclick="usarCoordsDoLocal()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1 rounded-md font-bold transition">Usar no GPS</button>
+                                    <button type="button" onclick="document.getElementById('os-local-coords-sugestao').classList.add('hidden')" class="text-xs text-slate-500 hover:text-white px-1 py-1 transition"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Protocolo HubSoft</label>
@@ -376,11 +386,29 @@
                             <input type="text" id="os-protocolo-james" placeholder="Número do protocolo James" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 focus:border-emerald-500 outline-none text-sm font-mono">
                         </div>
                         <div class="md:col-span-2">
-                            <label class="block text-xs font-bold text-slate-400 mb-1">Coordenadas GPS (Lat, Lng)</label>
-                            <input type="text" id="os-coords" placeholder="-18.91, -48.27" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 focus:border-emerald-500 outline-none font-mono text-sm">
+                            <label class="block text-xs font-bold text-slate-400 mb-1">
+                                <i class="fas fa-map-marker-alt text-rose-400 mr-1"></i>Coordenadas GPS (Lat, Lng)
+                                <span class="text-rose-500 ml-0.5">*</span>
+                                <span class="text-slate-600 font-normal ml-1">— obrigatório</span>
+                            </label>
+                            <div class="relative">
+                                <input type="text" id="os-coords"
+                                       placeholder="-18.9123, -48.2741  ou cole um link do Google Maps"
+                                       class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 pr-10 focus:border-indigo-500 outline-none font-mono text-sm transition-colors"
+                                       oninput="validarCoordsNovaOS()">
+                                <span id="os-coords-icon" class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-base"></span>
+                            </div>
+                            <p id="os-coords-msg" class="hidden text-xs mt-1.5"></p>
+                            <div id="os-coords-preview" class="hidden mt-2 rounded-xl overflow-hidden border border-slate-700 bg-slate-900">
+                                <div id="os-coords-map" class="h-44 w-full"></div>
+                                <div class="px-3 py-1.5 flex items-center justify-between border-t border-slate-700/60">
+                                    <span id="os-coords-label" class="text-xs font-mono text-slate-300"></span>
+                                    <a id="os-coords-gmaps" href="#" target="_blank" rel="noopener" class="text-xs text-blue-400 hover:underline flex items-center gap-1"><i class="fas fa-external-link-alt text-[10px]"></i> Ver no Google Maps</a>
+                                </div>
+                            </div>
                         </div>
                         <div class="md:col-span-2 flex justify-end gap-3">
-                            <button type="button" onclick="document.getElementById('form-nova-os').reset();document.getElementById('os-autopaste').value='';" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2.5 px-5 rounded-lg transition text-sm"><i class="fas fa-eraser mr-2"></i>Limpar</button>
+                            <button type="button" onclick="resetFormNovaOS()" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2.5 px-5 rounded-lg transition text-sm"><i class="fas fa-eraser mr-2"></i>Limpar</button>
                             <button type="submit" id="btn-criar-os" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-6 rounded-lg transition shadow-lg shadow-emerald-500/20"><i class="fas fa-save mr-2"></i>Registrar OS</button>
                         </div>
                     </form>
@@ -1668,6 +1696,159 @@ service cloud.firestore {
                 }
             }
             salvar();
+            // Verifica se o campo local recebeu coordenadas via autopaste
+            setTimeout(verificarCoordsNoLocal, 50);
+        }
+
+        // ── VALIDAÇÃO GPS ─────────────────────────────────────────
+        let _coordsPreviewMap = null, _coordsPreviewMarker = null, _coordsTimer = null;
+
+        function _parseCoordsInput(raw) {
+            if (!raw) return null;
+            const s = raw.trim();
+            // Google Maps URL: /@lat,lng ou ?q=lat,lng ou /place/.../@lat,lng
+            const gm = s.match(/[/@](-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/) ||
+                       s.match(/[?&]q=(-?\d{1,3}\.?\d*),(-?\d{1,3}\.?\d*)/);
+            if (gm) return { lat: parseFloat(gm[1]), lng: parseFloat(gm[2]), fromUrl: true };
+            // Padrão: "lat, lng" / "lat lng" / "lat,lng"
+            const parts = s.split(/[\s,;]+/).filter(Boolean).map(Number);
+            if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1]))
+                return { lat: parts[0], lng: parts[1] };
+            return null;
+        }
+
+        function _coordsInBrazil(lat, lng) {
+            return lat >= -34.0 && lat <= 5.3 && lng >= -74.0 && lng <= -28.8;
+        }
+
+        function validarCoordsNovaOS() {
+            const input   = document.getElementById('os-coords');
+            const iconEl  = document.getElementById('os-coords-icon');
+            const msgEl   = document.getElementById('os-coords-msg');
+            const prevEl  = document.getElementById('os-coords-preview');
+            const raw     = input.value;
+            if (_coordsTimer) clearTimeout(_coordsTimer);
+            input.classList.remove('border-emerald-500','border-red-500','border-amber-500');
+
+            if (!raw.trim()) {
+                iconEl.innerHTML = '';
+                msgEl.classList.add('hidden');
+                prevEl.classList.add('hidden');
+                return;
+            }
+            const c = _parseCoordsInput(raw);
+            if (!c) {
+                input.classList.add('border-red-500');
+                iconEl.innerHTML = '<i class="fas fa-times-circle text-red-400"></i>';
+                msgEl.className = 'text-xs mt-1.5 text-red-400 flex items-center gap-1.5';
+                msgEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Formato inválido. Use: <span class="font-mono bg-slate-900 px-1 rounded">-18.9123, -48.2741</span> — ou cole um link do Google Maps';
+                msgEl.classList.remove('hidden');
+                prevEl.classList.add('hidden');
+                return;
+            }
+            const { lat, lng } = c;
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                input.classList.add('border-red-500');
+                iconEl.innerHTML = '<i class="fas fa-times-circle text-red-400"></i>';
+                msgEl.className = 'text-xs mt-1.5 text-red-400 flex items-center gap-1.5';
+                msgEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Valores fora do intervalo global (Lat: −90 a 90 · Lng: −180 a 180).';
+                msgEl.classList.remove('hidden');
+                prevEl.classList.add('hidden');
+                return;
+            }
+            // Normaliza se veio de URL
+            if (c.fromUrl) input.value = `${lat}, ${lng}`;
+
+            if (!_coordsInBrazil(lat, lng)) {
+                input.classList.add('border-amber-500');
+                iconEl.innerHTML = '<i class="fas fa-exclamation-triangle text-amber-400"></i>';
+                msgEl.className = 'text-xs mt-1.5 text-amber-400 flex items-center gap-1.5';
+                msgEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <strong>Atenção:</strong> coordenadas parecem estar fora do Brasil. Verifique o preview antes de salvar.';
+            } else {
+                input.classList.add('border-emerald-500');
+                iconEl.innerHTML = '<i class="fas fa-check-circle text-emerald-400"></i>';
+                msgEl.className = 'text-xs mt-1.5 text-emerald-400 flex items-center gap-1.5';
+                msgEl.innerHTML = '<i class="fas fa-check-circle"></i> Coordenadas válidas — confira o preview abaixo';
+            }
+            msgEl.classList.remove('hidden');
+            _coordsTimer = setTimeout(() => _atualizarPreviewCoords(lat, lng), 500);
+        }
+
+        function _atualizarPreviewCoords(lat, lng) {
+            const prevEl  = document.getElementById('os-coords-preview');
+            const labelEl = document.getElementById('os-coords-label');
+            const gmEl    = document.getElementById('os-coords-gmaps');
+            prevEl.classList.remove('hidden');
+            labelEl.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            gmEl.href = `https://www.google.com/maps?q=${lat},${lng}`;
+            if (!_coordsPreviewMap) {
+                _coordsPreviewMap = L.map('os-coords-map', { zoomControl: true, attributionControl: false });
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(_coordsPreviewMap);
+                _coordsPreviewMarker = L.marker([lat, lng]).addTo(_coordsPreviewMap);
+                _coordsPreviewMap.setView([lat, lng], 15);
+                setTimeout(() => _coordsPreviewMap.invalidateSize(), 200);
+            } else {
+                if (_coordsPreviewMarker) _coordsPreviewMap.removeLayer(_coordsPreviewMarker);
+                _coordsPreviewMarker = L.marker([lat, lng]).addTo(_coordsPreviewMap);
+                _coordsPreviewMap.setView([lat, lng], 15);
+                setTimeout(() => _coordsPreviewMap.invalidateSize(), 100);
+            }
+        }
+
+        function resetFormNovaOS() {
+            document.getElementById('form-nova-os').reset();
+            document.getElementById('os-autopaste').value = '';
+            const input = document.getElementById('os-coords');
+            input.classList.remove('border-emerald-500','border-red-500','border-amber-500');
+            document.getElementById('os-coords-icon').innerHTML = '';
+            document.getElementById('os-coords-msg').classList.add('hidden');
+            document.getElementById('os-coords-preview').classList.add('hidden');
+            document.getElementById('os-local-coords-sugestao').classList.add('hidden');
+            _sugestaoCoords = null;
+        }
+
+        let _sugestaoCoords = null;
+
+        function _detectarCoordsNoTexto(text) {
+            if (!text) return null;
+            // Google Maps URL
+            const gm = text.match(/[/@](-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/) ||
+                       text.match(/[?&]q=(-?\d{1,3}\.?\d*),(-?\d{1,3}\.?\d*)/);
+            if (gm) {
+                const lat = parseFloat(gm[1]), lng = parseFloat(gm[2]);
+                if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return { lat, lng };
+            }
+            // Par de coordenadas com ≥4 casas decimais (evita falsos positivos com CEP, telefone etc)
+            const m = text.match(/(-?\d{1,3}\.\d{4,})[,\s]+(-?\d{1,3}\.\d{4,})/);
+            if (m) {
+                const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+                if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return { lat, lng };
+            }
+            return null;
+        }
+
+        function verificarCoordsNoLocal() {
+            const val = document.getElementById('os-local').value;
+            const sugestaoEl = document.getElementById('os-local-coords-sugestao');
+            const c = _detectarCoordsNoTexto(val);
+            // Não sugerir se o campo GPS já tiver coordenadas válidas
+            const coordsJaOk = _parseCoordsInput(document.getElementById('os-coords').value.trim());
+            if (c && !coordsJaOk) {
+                _sugestaoCoords = c;
+                document.getElementById('os-local-coords-valor').textContent = `${c.lat}, ${c.lng}`;
+                sugestaoEl.classList.remove('hidden');
+            } else {
+                sugestaoEl.classList.add('hidden');
+                _sugestaoCoords = null;
+            }
+        }
+
+        function usarCoordsDoLocal() {
+            if (!_sugestaoCoords) return;
+            document.getElementById('os-coords').value = `${_sugestaoCoords.lat}, ${_sugestaoCoords.lng}`;
+            validarCoordsNovaOS();
+            document.getElementById('os-local-coords-sugestao').classList.add('hidden');
+            _sugestaoCoords = null;
         }
 
         async function criarOS(e) {
@@ -1675,6 +1856,23 @@ service cloud.firestore {
             const btn = document.getElementById('btn-criar-os');
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Salvando...';
+
+            // Validação de coordenadas obrigatórias
+            const coordsRaw = document.getElementById('os-coords').value.trim();
+            const coordsParsed = _parseCoordsInput(coordsRaw);
+            if (!coordsRaw || !coordsParsed || coordsParsed.lat < -90 || coordsParsed.lat > 90 || coordsParsed.lng < -180 || coordsParsed.lng > 180) {
+                const msgEl = document.getElementById('os-coords-msg');
+                msgEl.className = 'text-xs mt-1.5 text-red-400 flex items-center gap-1.5';
+                msgEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Coordenadas GPS são obrigatórias e devem ser válidas.';
+                msgEl.classList.remove('hidden');
+                document.getElementById('os-coords').classList.add('border-red-500');
+                document.getElementById('os-coords').focus();
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save mr-2"></i>Registrar OS';
+                return;
+            }
+            const coordsFinal = `${coordsParsed.lat}, ${coordsParsed.lng}`;
+
             try {
                 const id = await _nextOSId();
                 const criadoEm  = firebase.firestore.FieldValue.serverTimestamp();
@@ -1692,7 +1890,7 @@ service cloud.firestore {
                     local:           document.getElementById('os-local').value.trim(),
                     protocoloHub:    document.getElementById('os-protocolo-hub').value.trim(),
                     protocoloJames:  document.getElementById('os-protocolo-james').value.trim(),
-                    coords:          document.getElementById('os-coords').value.trim() || '',
+                    coords:          coordsFinal,
                     status:          'aberta',
                     dataCriacao:     new Date().toLocaleDateString('pt-BR'),
                     abertaEm,
