@@ -397,7 +397,7 @@
                     <form id="form-nova-os" onsubmit="criarOS(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Código HubSoft</label>
-                            <input type="text" id="os-codigo" placeholder="Ex: 2866" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 focus:border-emerald-500 outline-none text-sm">
+                            <input type="text" id="os-codigo" placeholder="Ex: 2866" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2 focus:border-emerald-500 outline-none text-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Ponto HubSoft *</label>
@@ -485,6 +485,19 @@
                                     <span class="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0"></span>
                                     <span class="text-sm font-bold text-slate-300">Outro</span>
                                 </label>
+                            </div>
+                        </div>
+                        <div id="os-codigo-aviso" class="md:col-span-2 hidden">
+                            <div class="flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+                                <i class="fas fa-exclamation-triangle text-amber-400 mt-0.5 flex-shrink-0"></i>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-bold text-amber-300 mb-0.5">Código já em uso</p>
+                                    <p id="os-codigo-aviso-txt" class="text-xs text-amber-200/70 break-words"></p>
+                                </div>
+                            </div>
+                            <div class="flex justify-end gap-2 mt-2">
+                                <button type="button" onclick="_osCodigoConfirmado=false;document.getElementById('os-codigo-aviso').classList.add('hidden')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2 px-4 rounded-lg transition text-sm">Cancelar</button>
+                                <button type="button" onclick="_osCodigoConfirmado=true;document.getElementById('os-codigo-aviso').classList.add('hidden');document.getElementById('btn-criar-os').click()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded-lg transition text-sm"><i class="fas fa-exclamation-triangle mr-1.5"></i>Criar mesmo assim</button>
                             </div>
                         </div>
                         <div class="md:col-span-2 flex justify-end gap-3">
@@ -792,7 +805,7 @@
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Código HubSoft</label>
-                            <input type="text" id="edit-os-codigo" placeholder="Ex: 2866" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
+                            <input type="text" id="edit-os-codigo" placeholder="Ex: 2866" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-400 mb-1">Ponto HubSoft *</label>
@@ -1959,10 +1972,13 @@ service cloud.firestore {
             document.getElementById('os-coords-msg').classList.add('hidden');
             document.getElementById('os-coords-preview').classList.add('hidden');
             document.getElementById('os-local-coords-sugestao').classList.add('hidden');
+            document.getElementById('os-codigo-aviso').classList.add('hidden');
             _sugestaoCoords = null;
+            _osCodigoConfirmado = false;
         }
 
         let _sugestaoCoords = null;
+        let _osCodigoConfirmado = false;
 
         function _detectarCoordsNoTexto(text) {
             if (!text) return null;
@@ -2027,6 +2043,25 @@ service cloud.firestore {
                 return;
             }
             const coordsFinal = `${coordsParsed.lat}, ${coordsParsed.lng}`;
+
+            // Verificar código duplicado em abertas/atribuidas
+            const codigoVal = document.getElementById('os-codigo').value.trim();
+            if (codigoVal && !_osCodigoConfirmado) {
+                const duplicatas = state.oss.filter(o =>
+                    o.codigo === codigoVal &&
+                    (o.status === 'aberta' || o.status === 'atribuida')
+                );
+                if (duplicatas.length > 0) {
+                    const lista = duplicatas.map(o => `OS #${o.id} — ${o.cliente} (${o.status === 'aberta' ? 'Aberta' : 'Atribuída'})`).join(' · ');
+                    document.getElementById('os-codigo-aviso-txt').textContent = `Código ${codigoVal} já está em uso: ${lista}`;
+                    document.getElementById('os-codigo-aviso').classList.remove('hidden');
+                    document.getElementById('os-codigo-aviso').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-save mr-2"></i>Registrar OS';
+                    return;
+                }
+            }
+            _osCodigoConfirmado = false;
 
             try {
                 const id = await _nextOSId();
