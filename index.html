@@ -467,6 +467,26 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-400 mb-2">Tipo de OS *</label>
+                            <div class="flex gap-2">
+                                <label class="flex-1 flex items-center gap-2 cursor-pointer bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 has-[:checked]:border-red-500 has-[:checked]:bg-red-500/10 transition">
+                                    <input type="radio" name="os-tipo" id="os-tipo-radio" value="radio" class="accent-red-500" required>
+                                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0"></span>
+                                    <span class="text-sm font-bold text-slate-300">Rádio</span>
+                                </label>
+                                <label class="flex-1 flex items-center gap-2 cursor-pointer bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10 transition">
+                                    <input type="radio" name="os-tipo" id="os-tipo-fibra" value="fibra" class="accent-blue-500" required>
+                                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                                    <span class="text-sm font-bold text-slate-300">Fibra</span>
+                                </label>
+                                <label class="flex-1 flex items-center gap-2 cursor-pointer bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 has-[:checked]:border-orange-500 has-[:checked]:bg-orange-500/10 transition">
+                                    <input type="radio" name="os-tipo" id="os-tipo-outro" value="outro" class="accent-orange-500" required>
+                                    <span class="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0"></span>
+                                    <span class="text-sm font-bold text-slate-300">Outro</span>
+                                </label>
+                            </div>
+                        </div>
                         <div class="md:col-span-2 flex justify-end gap-3">
                             <button type="button" onclick="resetFormNovaOS()" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-bold py-2.5 px-5 rounded-lg transition text-sm"><i class="fas fa-eraser mr-2"></i>Limpar</button>
                             <button type="submit" id="btn-criar-os" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-6 rounded-lg transition shadow-lg shadow-emerald-500/20"><i class="fas fa-save mr-2"></i>Registrar OS</button>
@@ -820,6 +840,26 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-400 mb-1"><i class="fas fa-map-marker-alt text-rose-400 mr-1"></i>Coordenadas GPS (Lat, Lng)</label>
                         <input type="text" id="edit-os-coords" placeholder="-18.91, -48.27" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-indigo-500 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-2">Tipo de OS *</label>
+                        <div class="flex gap-2">
+                            <label class="flex-1 flex items-center gap-2 cursor-pointer bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 has-[:checked]:border-red-500 has-[:checked]:bg-red-500/10 transition">
+                                <input type="radio" name="edit-os-tipo" id="edit-os-tipo-radio" value="radio" class="accent-red-500">
+                                <span class="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0"></span>
+                                <span class="text-sm font-bold text-slate-300">Rádio</span>
+                            </label>
+                            <label class="flex-1 flex items-center gap-2 cursor-pointer bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-500/10 transition">
+                                <input type="radio" name="edit-os-tipo" id="edit-os-tipo-fibra" value="fibra" class="accent-blue-500">
+                                <span class="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0"></span>
+                                <span class="text-sm font-bold text-slate-300">Fibra</span>
+                            </label>
+                            <label class="flex-1 flex items-center gap-2 cursor-pointer bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 has-[:checked]:border-orange-500 has-[:checked]:bg-orange-500/10 transition">
+                                <input type="radio" name="edit-os-tipo" id="edit-os-tipo-outro" value="outro" class="accent-orange-500">
+                                <span class="w-2.5 h-2.5 rounded-full bg-orange-500 flex-shrink-0"></span>
+                                <span class="text-sm font-bold text-slate-300">Outro</span>
+                            </label>
+                        </div>
                     </div>
                     <p id="edit-os-erro" class="text-rose-400 text-xs hidden"><i class="fas fa-exclamation-circle mr-1"></i><span id="edit-os-erro-txt"></span></p>
                 </div>
@@ -2006,6 +2046,7 @@ service cloud.firestore {
                     protocoloHub:    document.getElementById('os-protocolo-hub').value.trim(),
                     protocoloJames:  document.getElementById('os-protocolo-james').value.trim(),
                     coords:          coordsFinal,
+                    tipo:            document.querySelector('input[name="os-tipo"]:checked')?.value || 'outro',
                     status:          'aberta',
                     dataCriacao:     new Date().toLocaleDateString('pt-BR'),
                     abertaEm,
@@ -2100,7 +2141,7 @@ service cloud.firestore {
             }
 
             cont.innerHTML = lista.map(os => {
-                const cor = status === 'aberta' ? '#f59e0b' : status === 'fechada' ? '#10b981' : '#3b82f6';
+                const cor = _tipoOsCor(os);
 
                 // linha de rastreio: aberta em / por
                 const abertaInfo = os.abertaEm
@@ -2129,7 +2170,10 @@ service cloud.firestore {
                             <strong class="block text-sm font-bold truncate">#${os.id}</strong>
                             <strong class="block text-sm font-bold truncate">${os.cliente}</strong>
                         </div>
-                        <span class="w-2 h-2 rounded-full mt-1 flex-shrink-0 ml-2" style="background:${cor}"></span>
+                        <div class="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
+                            <span class="w-2 h-2 rounded-full" style="background:${cor}"></span>
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style="color:${cor};background:${cor}22;border:1px solid ${cor}44">${_tipoOsLabel(os)}</span>
+                        </div>
                     </div>
                     <p class="text-xs text-slate-400 truncate">${os.falha}</p>
                     ${abertaInfo}
@@ -2193,9 +2237,10 @@ service cloud.firestore {
             p.innerHTML = `
                 <!-- Barra de ações -->
                 <div class="flex items-center justify-between gap-2 mb-3">
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex items-center gap-1.5 flex-wrap">
                         <span class="text-xs font-black text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-md">#${os.id}</span>
                         <span class="text-xs font-bold px-2 py-0.5 rounded-md border ${os.status==='aberta'?'text-amber-400 bg-amber-500/10 border-amber-500/20':os.status==='atribuida'?'text-blue-400 bg-blue-500/10 border-blue-500/20':'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'}">${statusLabels[os.status]||os.status}</span>
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-md border" style="color:${_tipoOsCor(os)};background:${_tipoOsCor(os)}22;border-color:${_tipoOsCor(os)}44"><span class="w-1.5 h-1.5 rounded-full inline-block mr-1" style="background:${_tipoOsCor(os)}"></span>${_tipoOsLabel(os)}</span>
                     </div>
                     <div class="flex items-center gap-1.5">
                         <button onclick="abrirEditarOS(${os.id})" class="h-7 px-2.5 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-xs font-bold hover:bg-indigo-500 hover:text-white transition flex items-center gap-1"><i class="fas fa-pen text-[10px]"></i> Editar</button>
@@ -2765,6 +2810,11 @@ service cloud.firestore {
         async function fecharOSGestor(osId) {
             if (!confirm('Encerrar esta OS manualmente?')) return;
             const os = state.oss.find(o => o.id === osId);
+            if (!os) return;
+            // Cannot close an OS with no technician assigned
+            if (!os.tecnicosIds || os.tecnicosIds.length === 0) {
+                return alert('Atribua ao menos 1 técnico antes de encerrar a OS.');
+            }
             const prevStatus = os?.status;
             const updates = { status: 'fechada', notasExecucao: 'Encerrada via painel do gestor' };
             if (os) Object.assign(os, updates);
@@ -2869,14 +2919,37 @@ service cloud.firestore {
         async function mudarStatusOS(osId, novoStatus) {
             const os = state.oss.find(o => o.id === osId);
             if (!os || os.status === novoStatus) return;
-            const prevStatus = os.status;
+
+            // Moving to "aberta" always resets assignment
+            const resetando = novoStatus === 'aberta';
+            // Trying to set atribuida/fechada with no technician → force aberta
+            const semTec = !os.tecnicosIds || os.tecnicosIds.length === 0;
+            if (novoStatus !== 'aberta' && semTec) {
+                novoStatus = 'aberta';
+                if (os.status === 'aberta') return;
+            }
+
+            const prevStatus    = os.status;
+            const prevTecs      = os.tecnicosIds;
+            const prevTratativa = os.tratativa;
+
             os.status = novoStatus;
+            const updates = { status: novoStatus };
+            if (resetando) {
+                os.tecnicosIds = [];
+                os.tratativa   = null;
+                updates.tecnicosIds = [];
+                updates.tratativa   = null;
+            }
+
             try {
-                await _updateOS(osId, { status: novoStatus });
+                await _updateOS(osId, updates);
                 abrirPainelAtribuicao(osId);
                 filtrarFilaOS(filtroOSAtual);
             } catch(err) {
-                os.status = prevStatus;
+                os.status      = prevStatus;
+                os.tecnicosIds = prevTecs;
+                os.tratativa   = prevTratativa;
                 alert('Erro ao alterar status: ' + err.message);
             }
         }
@@ -2954,7 +3027,7 @@ service cloud.firestore {
                 if (!os.coords) return;
                 const [lat, lng] = os.coords.split(',').map(Number);
                 if (!lat || !lng) return;
-                const cor = os.status === 'aberta' ? '#f59e0b' : os.status === 'fechada' ? '#10b981' : '#3b82f6';
+                const cor = _tipoOsCor(os);
                 const circle = L.circleMarker([lat, lng], { radius: 8, fillColor: cor, color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.9 });
                 circle.bindTooltip(`<span style="color:#818cf8;font-weight:900">#${os.id}</span> · <strong>${os.cliente}</strong>`, { sticky: true, opacity: 0.95 })
                       .on('click', () => abrirPainelAtribuicao(os.id));
@@ -3015,7 +3088,10 @@ service cloud.firestore {
                                 <div class="bg-slate-900 rounded p-2 text-xs border-l-2" style="border-color:${t.cor}">
                                     <div class="flex justify-between text-slate-300 font-bold mb-0.5">
                                         <span>${o.tratativa.hora}</span>
-                                        <span class="text-[10px] bg-indigo-500/20 text-indigo-400 px-1 rounded">OS-${o.id}</span>
+                                        <div class="flex items-center gap-1">
+                                            <span class="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" style="background:${_tipoOsCor(o)}"></span>
+                                            <span class="text-[10px] bg-indigo-500/20 text-indigo-400 px-1 rounded">OS-${o.id}</span>
+                                        </div>
                                     </div>
                                     <div class="truncate text-slate-400">${o.cliente}</div>
                                 </div>
@@ -3034,6 +3110,19 @@ service cloud.firestore {
             if (!confirm(`Apagar técnico "${tec.nome}" permanentemente?`)) return;
             try {
                 await colTecnicos.doc(String(tecId)).delete();
+                // Clean up OS assignments — if this was the only tech, reset to "aberta"
+                const osAfetadas = state.oss.filter(o =>
+                    o.status !== 'fechada' &&
+                    o.tecnicosIds && o.tecnicosIds.includes(tecId)
+                );
+                for (const os of osAfetadas) {
+                    const novosTecs = os.tecnicosIds.filter(id => id !== tecId);
+                    if (novosTecs.length === 0) {
+                        await _updateOS(os.id, { tecnicosIds: [], status: 'aberta', tratativa: null });
+                    } else {
+                        await _updateOS(os.id, { tecnicosIds: novosTecs });
+                    }
+                }
             } catch(err) {
                 alert('Erro ao apagar técnico: ' + err.message);
             }
@@ -3442,6 +3531,9 @@ service cloud.firestore {
             document.getElementById('edit-os-protocolo-hub').value     = os.protocoloHub || '';
             document.getElementById('edit-os-protocolo-james').value   = os.protocoloJames || '';
             document.getElementById('edit-os-coords').value            = os.coords || '';
+            const tipoVal = os.tipo || 'outro';
+            const tipoRadio = document.querySelector(`input[name="edit-os-tipo"][value="${tipoVal}"]`);
+            if (tipoRadio) tipoRadio.checked = true;
             document.getElementById('edit-os-erro').classList.add('hidden');
             const modal = document.getElementById('modal-editar-os');
             modal.classList.remove('hidden');
@@ -3486,6 +3578,7 @@ service cloud.firestore {
                 protocoloHub:    document.getElementById('edit-os-protocolo-hub').value.trim(),
                 protocoloJames:  document.getElementById('edit-os-protocolo-james').value.trim(),
                 coords:          document.getElementById('edit-os-coords').value.trim(),
+                tipo:            document.querySelector('input[name="edit-os-tipo"]:checked')?.value || 'outro',
             };
 
             const os = state.oss.find(o => o.id === id);
@@ -3801,6 +3894,12 @@ service cloud.firestore {
         function _avOsColor(os) {
             return _AV_PALETTE[Number(os.id) % _AV_PALETTE.length];
         }
+        function _tipoOsCor(os) {
+            return os.tipo === 'radio' ? '#ef4444' : os.tipo === 'fibra' ? '#3b82f6' : '#f97316';
+        }
+        function _tipoOsLabel(os) {
+            return os.tipo === 'radio' ? 'Rádio' : os.tipo === 'fibra' ? 'Fibra' : 'Outro';
+        }
 
         const _AV_H_INI = 7;
         const _AV_H_FIM = 21;
@@ -3936,7 +4035,10 @@ service cloud.firestore {
                         onclick="avAbrirOsPanel('${os.id}')"
                         data-osid="${os.id}"
                         style="position:absolute;top:${topPx}px;left:4px;right:4px;height:${_AV_PX_H-6}px;border-radius:8px;border:2px solid ${osCor};background:${osCor}22;padding:5px 7px;cursor:grab;z-index:5;overflow:hidden;box-sizing:border-box">
-                        <div style="font-size:11px;font-weight:700;color:${osCor};line-height:1.2">#${os.id}</div>
+                        <div style="display:flex;align-items:center;gap:4px;line-height:1.2">
+                            <span style="font-size:11px;font-weight:700;color:${osCor}">#${os.id}</span>
+                            <span style="width:6px;height:6px;border-radius:50%;background:${_tipoOsCor(os)};flex-shrink:0"></span>
+                        </div>
                         <div style="font-size:11px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">${os.cliente||''}</div>
                         <div style="font-size:10px;color:#94a3b8;line-height:1.2">${hora}</div>
                     </div>`;
@@ -4030,7 +4132,10 @@ service cloud.firestore {
                         </button>
                     </div>
                 </div>
-                <p style="font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:14px;word-break:break-word;line-height:1.3">${os.cliente||''}</p>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+                    <p style="font-size:16px;font-weight:700;color:#f1f5f9;word-break:break-word;line-height:1.3;margin:0">${os.cliente||''}</p>
+                    <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px;color:${_tipoOsCor(os)};background:${_tipoOsCor(os)}22;border:1px solid ${_tipoOsCor(os)}44;white-space:nowrap;flex-shrink:0"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${_tipoOsCor(os)};margin-right:4px;vertical-align:middle"></span>${_tipoOsLabel(os)}</span>
+                </div>
                 ${row('Falha / Descrição', os.falha, 'fas fa-exclamation-circle')}
                 ${row('Técnico(s)', tecNomes || '—')}
                 ${os.tratativa ? row('Agendado para', `${os.tratativa.data} às ${os.tratativa.hora}`, 'fas fa-calendar-check') : ''}
@@ -4120,11 +4225,15 @@ service cloud.firestore {
             // Deduplicate in case target was already in the list
             novosTecs = [...new Set(novosTecs)];
 
+            // If somehow no technician remains, treat as "aberta" reset
+            const novoStatus = novosTecs.length === 0 ? 'aberta' : 'atribuida';
+            const novaTratativa = novosTecs.length === 0 ? null : { ...(os.tratativa || {}), data: dia, hora };
+
             try {
                 await _updateOS(osId, {
                     tecnicosIds: novosTecs,
-                    status: 'atribuida',
-                    tratativa: { ...(os.tratativa || {}), data: dia, hora }
+                    status: novoStatus,
+                    tratativa: novaTratativa
                 });
             } catch(err) {
                 alert('Erro ao reagendar OS: ' + err.message);
