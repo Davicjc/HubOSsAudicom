@@ -2049,28 +2049,46 @@ service cloud.firestore {
             const p = document.getElementById('painel-atribuicao');
             const statusLabels = { aberta: 'Aberta', atribuida: 'Atribuída', fechada: 'Concluída' };
             const statusCores  = { aberta: 'text-amber-400', atribuida: 'text-blue-400', fechada: 'text-emerald-400' };
+            const _row = (label, val, icon='', cls='') => val
+                ? `<div><p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">${label}</p><p class="text-sm text-slate-200 break-words leading-snug ${cls}">${icon ? `<i class="${icon} mr-1 opacity-60"></i>` : ''}${val}</p></div>`
+                : '';
             p.innerHTML = `
-                <div class="border-b border-slate-700 pb-4 mb-4">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="min-w-0">
-                            <h3 class="font-black text-xl text-indigo-400">#${os.id} - ${os.cliente}</h3>
-                            ${os.codigo ? `<p class="text-xs text-slate-500 font-mono">Cód: ${os.codigo}${os.protocoloHub ? ' · Hub: '+os.protocoloHub : ''}${os.protocoloJames ? ' · James: '+os.protocoloJames : ''}</p>` : ''}
-                            ${os.abertaEm ? `<p class="text-[10px] text-slate-500 mt-0.5"><i class="fas fa-door-open mr-1"></i>Aberta em: <span class="text-slate-400">${os.abertaEm.slice(0,16)}</span>${os.abertaPor ? ' · por: <span class="text-slate-300 font-bold">'+os.abertaPor+'</span>' : ''}</p>` : ''}
-                            <p class="text-sm text-slate-300 mt-0.5"><i class="fas fa-tag text-indigo-400 mr-1"></i>${os.ponto}</p>
-                            ${os.local ? `<p class="text-xs text-slate-400 mt-0.5"><i class="fas fa-map-marker-alt text-rose-400 mr-1"></i>${os.local}</p>` : ''}
-                            <p class="text-xs text-slate-400 mt-0.5"><i class="fas fa-exclamation-triangle text-amber-400 mr-1"></i>${os.falha}</p>
-                            ${os.disponibilidade ? `<p class="text-xs text-slate-500 mt-0.5"><i class="fas fa-clock mr-1"></i>Disp.: ${os.disponibilidade}${os.responsavel ? ' · Resp.: '+os.responsavel : ''}</p>` : ''}
-                        </div>
-                        <div class="flex gap-1.5 flex-shrink-0 ml-2 items-center">
-                            <button onclick="abrirEditarOS(${os.id})" class="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-3 py-1 rounded flex items-center gap-1.5 text-xs font-bold hover:bg-indigo-500 hover:text-white transition"><i class="fas fa-pen"></i> Editar</button>
-                            <button onclick="deletarOS(${os.id})" class="bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded flex items-center gap-1.5 text-xs font-bold hover:bg-red-500 hover:text-white transition"><i class="fas fa-trash"></i> Apagar</button>
-                            <button onclick="fecharPainelAtribuicao()" class="w-7 h-7 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-white flex items-center justify-center transition" title="Fechar"><i class="fas fa-times text-xs"></i></button>
-                        </div>
+                <!-- Barra de ações -->
+                <div class="flex items-center justify-between gap-2 mb-3">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-black text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-md">#${os.id}</span>
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-md border ${os.status==='aberta'?'text-amber-400 bg-amber-500/10 border-amber-500/20':os.status==='atribuida'?'text-blue-400 bg-blue-500/10 border-blue-500/20':'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'}">${statusLabels[os.status]||os.status}</span>
                     </div>
-                    <div class="flex flex-wrap gap-2 items-center">
-                        <span class="text-xs text-slate-500 font-bold uppercase">Status:</span>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="abrirEditarOS(${os.id})" class="h-7 px-2.5 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-xs font-bold hover:bg-indigo-500 hover:text-white transition flex items-center gap-1"><i class="fas fa-pen text-[10px]"></i> Editar</button>
+                        <button onclick="deletarOS(${os.id})" class="w-7 h-7 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center hover:bg-red-500/30 transition" title="Apagar"><i class="fas fa-trash text-[10px]"></i></button>
+                        <button onclick="fecharPainelAtribuicao()" class="w-7 h-7 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-white flex items-center justify-center transition" title="Fechar"><i class="fas fa-times text-xs"></i></button>
+                    </div>
+                </div>
+
+                <!-- Cabeçalho: cliente -->
+                <div class="mb-3 pb-3 border-b border-slate-700/60">
+                    <h3 class="font-black text-lg text-slate-100 leading-tight break-words mb-1">${os.cliente}</h3>
+                    ${os.abertaEm ? `<p class="text-[10px] text-slate-500"><i class="fas fa-door-open mr-1"></i>${os.abertaEm.slice(0,16)}${os.abertaPor ? ' · <span class="text-slate-400 font-bold">'+os.abertaPor+'</span>' : ''}</p>` : ''}
+                </div>
+
+                <!-- Campos de info -->
+                <div class="space-y-2.5 mb-3 pb-3 border-b border-slate-700/60">
+                    ${_row('Ponto HubSoft', os.ponto, 'fas fa-tag text-indigo-400')}
+                    ${_row('Falha Relatada', os.falha, 'fas fa-exclamation-triangle text-amber-400')}
+                    ${_row('Local / Endereço', os.local, 'fas fa-map-marker-alt text-rose-400')}
+                    ${_row('Telefone', os.telefone, 'fas fa-phone text-slate-400')}
+                    ${_row('Disponibilidade', os.disponibilidade, 'fas fa-clock text-slate-400')}
+                    ${_row('Responsável', os.responsavel, 'fas fa-user text-slate-400')}
+                    ${(os.codigo||os.protocoloHub||os.protocoloJames) ? `<div><p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Códigos</p><p class="text-xs font-mono text-slate-300 break-all leading-relaxed">${[os.codigo?'Cód: '+os.codigo:'', os.protocoloHub?'Hub: '+os.protocoloHub:'', os.protocoloJames?'James: '+os.protocoloJames:''].filter(Boolean).join(' · ')}</p></div>` : ''}
+                </div>
+
+                <!-- Alterar status -->
+                <div class="mb-4">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Alterar Status</p>
+                    <div class="flex gap-1.5 flex-wrap">
                         ${['aberta','atribuida','fechada'].map(s => `
-                            <button onclick="mudarStatusOS(${os.id},'${s}')" class="px-3 py-1 rounded-full text-xs font-bold border transition ${os.status === s ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}">${statusLabels[s]}</button>
+                            <button onclick="mudarStatusOS(${os.id},'${s}')" class="px-3 py-1 rounded-full text-xs font-bold border transition ${os.status===s?'bg-indigo-600 text-white border-indigo-500':'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}">${statusLabels[s]}</button>
                         `).join('')}
                     </div>
                 </div>
