@@ -224,19 +224,20 @@
             <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center"><i class="fas fa-satellite-dish"></i></div>
-                    <span class="font-bold text-lg hidden sm:block">Hub OS Admin</span>
+                    <span class="font-bold text-lg hidden sm:block">Hub Agendamento</span>
                 </div>
                 <div class="flex items-center gap-4 text-sm">
                     <div class="bg-amber-500/20 text-amber-400 px-3 py-1.5 rounded-full border border-amber-500/20 font-bold flex items-center gap-2">
                         <i class="fas fa-clock"></i> <span id="badge-pendentes">0</span> pendentes
                     </div>
+                    <button onclick="forcarAtualizacao(this)" class="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-400 hover:text-white transition" title="Atualizar dados"><i class="fas fa-rotate-right text-sm"></i></button>
                     <button onclick="logout()" class="text-slate-400 hover:text-white transition"><i class="fas fa-sign-out-alt text-lg"></i></button>
                 </div>
             </div>
             <!-- Tabs -->
             <div class="max-w-7xl mx-auto px-4 flex overflow-x-auto gap-1 border-t border-slate-700/50">
                 <button onclick="switchTab('tab-dashboard')" id="btn-tab-dashboard" class="px-4 py-3 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400 whitespace-nowrap"><i class="fas fa-chart-pie mr-2"></i>Dashboard</button>
-                <button onclick="switchTab('tab-nova-os')" id="btn-tab-nova-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-plus-circle mr-2"></i>Nova OS</button>
+                <button onclick="switchTab('tab-nova-os')" id="btn-tab-nova-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-plus-circle mr-2"></i>Novo Agendamento</button>
                 <button onclick="switchTab('tab-os')" id="btn-tab-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-list-check mr-2"></i>Gestão de OS & Mapa</button>
                 <button onclick="switchTab('tab-tecnicos')" id="btn-tab-tecnicos" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-users mr-2"></i>Técnicos & Agenda</button>
                 <button onclick="switchTab('tab-adm')" id="btn-tab-adm" class="hidden px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-amber-400 hover:text-amber-300 whitespace-nowrap"><i class="fas fa-shield-halved mr-2"></i>ADM</button>
@@ -433,6 +434,16 @@
 
             <!-- TAB: ADM (visível só para super admin) -->
             <div id="tab-adm" class="tab-content animate-fade">
+
+                <!-- Lista de OSs Excluídas -->
+                <div class="glass-panel rounded-2xl p-5 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold flex items-center gap-2"><i class="fas fa-trash-can text-rose-400"></i> OSs Excluídas</h3>
+                        <span id="badge-excluidas" class="text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div id="lista-excluidas" class="space-y-2"></div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Novo Técnico -->
                     <div id="card-novo-tecnico" class="glass-panel rounded-2xl p-5 h-fit">
@@ -486,7 +497,11 @@
                     <span class="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 uppercase font-bold tracking-wider">Em Campo</span>
                 </div>
             </div>
-            <button onclick="logout()" class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><i class="fas fa-power-off"></i></button>
+            <div class="flex items-center gap-2">
+                <button onclick="verRotaTec(state.usuarioLogado.id)" class="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 hover:bg-blue-500/30 transition" title="Ver rota do dia"><i class="fas fa-route text-sm"></i></button>
+                <button onclick="forcarAtualizacao(this)" class="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-slate-400 hover:text-white transition" title="Atualizar dados"><i class="fas fa-rotate-right text-sm"></i></button>
+                <button onclick="logout()" class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><i class="fas fa-power-off"></i></button>
+            </div>
         </header>
 
         <div class="p-4 flex-1 overflow-y-auto">
@@ -499,6 +514,7 @@
                 <button onclick="abrirDataCustom('tec')" id="dia-tec-custom" class="tec-dia-btn flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400 flex items-center gap-1"><i class="fas fa-calendar-day"></i> Data</button>
                 <button onclick="abrirAgendaTec()" class="flex-shrink-0 ml-auto px-3 py-1.5 rounded-full text-xs font-bold border border-emerald-500/40 bg-emerald-600/20 text-emerald-400"><i class="fas fa-calendar-alt mr-1"></i>Agenda</button>
             </div>
+            <div id="tec-aviso-atrasadas" class="hidden mb-3"></div>
             <p id="tec-dia-label" class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 ml-1"></p>
             <div id="tec-app-lista" class="space-y-3"></div>
         </div>
@@ -908,8 +924,9 @@ service cloud.firestore {
 
         // ── ESTADO ────────────────────────────────────────────────
         let state = {
-            tecnicos:    [],
-            oss:         [],
+            tecnicos:      [],
+            oss:           [],
+            ossExcluidas:  [],
             usuarioLogado: null
         };
 
@@ -1050,7 +1067,9 @@ service cloud.firestore {
             }, err => console.error('[Firestore/tecnicos]', err));
 
             _unsubOSS = colOSS.orderBy('criadoEm').onSnapshot(snap => {
-                state.oss = snap.docs.map(d => d.data());
+                const todas = snap.docs.map(d => d.data());
+                state.oss          = todas.filter(o => o.status !== 'excluida');
+                state.ossExcluidas = todas.filter(o => o.status === 'excluida');
                 _onDadosAtualizados();
                 document.getElementById('loading-firebase').classList.add('hidden');
             }, err => {
@@ -1077,6 +1096,8 @@ service cloud.firestore {
                 atualizarDashboard();
                 renderFilaLateral(filtroOSAtual);
                 renderTecnicosCards();
+                const tabAdm = document.getElementById('tab-adm');
+                if (tabAdm && tabAdm.classList.contains('active')) renderExcluidas();
             } else if (state.usuarioLogado.tipo === 'tecnico') {
                 renderTecAppLista();
             }
@@ -1172,6 +1193,7 @@ service cloud.firestore {
             }
             if (id === 'tab-adm') {
                 renderSenhasGestor();
+                renderExcluidas();
             }
         }
 
@@ -1600,7 +1622,9 @@ service cloud.firestore {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Salvando...';
             try {
                 const id = await _nextOSId();
-                const criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+                const criadoEm  = firebase.firestore.FieldValue.serverTimestamp();
+                const abertaEm  = new Date().toLocaleString('pt-BR');
+                const abertaPor = state.usuarioLogado?.nomeGestor || 'gestor';
                 await _writeOS(id, {
                     id,
                     codigo:          document.getElementById('os-codigo').value.trim(),
@@ -1616,6 +1640,8 @@ service cloud.firestore {
                     coords:          document.getElementById('os-coords').value.trim() || '',
                     status:          'aberta',
                     dataCriacao:     new Date().toLocaleDateString('pt-BR'),
+                    abertaEm,
+                    abertaPor,
                     tecnicosIds:     [],
                     tratativa:       null,
                     notasExecucao:   null,
@@ -1681,37 +1707,82 @@ service cloud.firestore {
             const lista = state.oss.filter(o => o.status === status);
             const cont  = document.getElementById('lista-os-lateral');
             if (!cont) return;
+
+            // Ordenação por status
+            if (status === 'aberta') {
+                lista.sort((a, b) => {
+                    const ka = _dtSortKey(a.abertaEm) || String(a.id).padStart(10, '0');
+                    const kb = _dtSortKey(b.abertaEm) || String(b.id).padStart(10, '0');
+                    return ka.localeCompare(kb);
+                });
+            } else if (status === 'atribuida') {
+                lista.sort((a, b) => _tratSortKey(a).localeCompare(_tratSortKey(b)));
+            } else if (status === 'fechada') {
+                lista.sort((a, b) => {
+                    const ka = _dtSortKey(a.encerradoEm) || '999999999999';
+                    const kb = _dtSortKey(b.encerradoEm) || '999999999999';
+                    return ka.localeCompare(kb);
+                });
+            }
+
             if (lista.length === 0) {
                 cont.innerHTML = '<p class="text-center text-xs text-slate-500 mt-4">Nenhuma OS encontrada</p>';
                 renderMapaOSs();
                 return;
             }
+
             cont.innerHTML = lista.map(os => {
                 const cor = status === 'aberta' ? '#f59e0b' : status === 'fechada' ? '#10b981' : '#3b82f6';
+
+                // linha de rastreio: aberta em / por
+                const abertaInfo = os.abertaEm
+                    ? `<div class="text-[10px] mt-1.5 text-slate-500"><i class="fas fa-door-open text-slate-600 mr-0.5"></i>${os.abertaEm.slice(0,16)}${os.abertaPor ? ' · <span class="text-slate-400">'+os.abertaPor+'</span>' : ''}</div>`
+                    : '';
+
                 let tecsStr = '';
                 if (os.tecnicosIds && os.tecnicosIds.length > 0) {
                     const nomes = os.tecnicosIds.map(tid => state.tecnicos.find(t => t.id === tid)?.nome).filter(Boolean);
                     const dh = os.tratativa ? `${os.tratativa.data} ${os.tratativa.hora}` : '';
-                    tecsStr = `<div class="text-[10px] mt-1 text-slate-400"><i class="fas fa-users text-indigo-400"></i> ${nomes.join(', ')} <br>🗓 ${dh}</div>`;
+                    tecsStr = `<div class="text-[10px] mt-1 text-slate-400"><i class="fas fa-users text-indigo-400"></i> ${nomes.join(', ')} <br><i class="fas fa-calendar-check text-slate-500 mr-0.5"></i>${dh}</div>`;
                 }
+
+                const concluidaInfo = (status === 'fechada' && os.encerradoEm)
+                    ? `<div class="text-[10px] mt-1 text-emerald-600"><i class="fas fa-check-circle mr-0.5"></i>${os.encerradoEm.slice(0,16)}</div>`
+                    : '';
+
                 const seloNaoExec = os.motivoNaoExecutado
                     ? `<div class="flex items-center gap-1 mt-1.5"><span class="text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded-full"><i class="fas fa-ban mr-0.5"></i>Não executada</span></div>`
                     : '';
+
                 return `
                 <div onclick="abrirPainelAtribuicao(${os.id})" class="bg-slate-800/50 border ${os.motivoNaoExecutado ? 'border-rose-500/30' : 'border-slate-700'} p-3 rounded-xl cursor-pointer hover:border-indigo-500 transition">
                     <div class="flex justify-between items-start mb-1">
                         <strong class="text-sm font-bold truncate max-w-[70%]">${os.cliente}</strong>
-                        <span class="w-2 h-2 rounded-full mt-1" style="background:${cor}"></span>
+                        <span class="w-2 h-2 rounded-full mt-1 flex-shrink-0" style="background:${cor}"></span>
                     </div>
                     <p class="text-xs text-slate-400 truncate">${os.falha}</p>
-                    ${seloNaoExec}
+                    ${abertaInfo}
                     ${tecsStr}
+                    ${concluidaInfo}
+                    ${seloNaoExec}
                 </div>`;
             }).join('');
             renderMapaOSs();
         }
 
         let _atribTecs = [], _atribData = '', _atribHora = '';
+        function fecharPainelAtribuicao() {
+            document.getElementById('painel-atribuicao').innerHTML = '<p class="text-slate-400 text-sm text-center mt-8">Selecione uma OS na lista lateral para ver detalhes e atribuir técnicos.</p>';
+        }
+
+        function forcarAtualizacao(btn) {
+            if (btn) { btn.disabled = true; btn.querySelector('i').classList.add('animate-spin'); }
+            iniciarListeners();
+            setTimeout(() => {
+                if (btn) { btn.disabled = false; btn.querySelector('i').classList.remove('animate-spin'); }
+            }, 2000);
+        }
+
         function abrirPainelAtribuicao(id, keepState = false) {
             const os = state.oss.find(o => o.id === id);
             if (!os) return;
@@ -1731,14 +1802,16 @@ service cloud.firestore {
                         <div class="min-w-0">
                             <h3 class="font-black text-xl text-indigo-400">#${os.id} - ${os.cliente}</h3>
                             ${os.codigo ? `<p class="text-xs text-slate-500 font-mono">Cód: ${os.codigo}${os.protocoloHub ? ' · Hub: '+os.protocoloHub : ''}${os.protocoloJames ? ' · James: '+os.protocoloJames : ''}</p>` : ''}
+                            ${os.abertaEm ? `<p class="text-[10px] text-slate-500 mt-0.5"><i class="fas fa-door-open mr-1"></i>Aberta em: <span class="text-slate-400">${os.abertaEm.slice(0,16)}</span>${os.abertaPor ? ' · por: <span class="text-slate-300 font-bold">'+os.abertaPor+'</span>' : ''}</p>` : ''}
                             <p class="text-sm text-slate-300 mt-0.5"><i class="fas fa-tag text-indigo-400 mr-1"></i>${os.ponto}</p>
                             ${os.local ? `<p class="text-xs text-slate-400 mt-0.5"><i class="fas fa-map-marker-alt text-rose-400 mr-1"></i>${os.local}</p>` : ''}
                             <p class="text-xs text-slate-400 mt-0.5"><i class="fas fa-exclamation-triangle text-amber-400 mr-1"></i>${os.falha}</p>
                             ${os.disponibilidade ? `<p class="text-xs text-slate-500 mt-0.5"><i class="fas fa-clock mr-1"></i>Disp.: ${os.disponibilidade}${os.responsavel ? ' · Resp.: '+os.responsavel : ''}</p>` : ''}
                         </div>
-                        <div class="flex gap-1.5 flex-shrink-0 ml-2">
+                        <div class="flex gap-1.5 flex-shrink-0 ml-2 items-center">
                             <button onclick="abrirEditarOS(${os.id})" class="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-3 py-1 rounded flex items-center gap-1.5 text-xs font-bold hover:bg-indigo-500 hover:text-white transition"><i class="fas fa-pen"></i> Editar</button>
                             <button onclick="deletarOS(${os.id})" class="bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1 rounded flex items-center gap-1.5 text-xs font-bold hover:bg-red-500 hover:text-white transition"><i class="fas fa-trash"></i> Apagar</button>
+                            <button onclick="fecharPainelAtribuicao()" class="w-7 h-7 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-white flex items-center justify-center transition" title="Fechar"><i class="fas fa-times text-xs"></i></button>
                         </div>
                     </div>
                     <div class="flex flex-wrap gap-2 items-center">
@@ -2007,14 +2080,14 @@ service cloud.firestore {
 
             // Inicializa ou limpa mapa
             if (_mapaRota) {
-                _mapaRota.eachLayer(l => _mapaRota.removeLayer(l));
+                _mapaRota.eachLayer(l => { if (!(l instanceof L.TileLayer)) _mapaRota.removeLayer(l); });
             } else {
                 _mapaRota = L.map('mapa-rota-tec', { zoomControl: true });
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© OpenStreetMap'
                 }).addTo(_mapaRota);
             }
-            setTimeout(() => _mapaRota.invalidateSize(), 200);
+            setTimeout(() => _mapaRota.invalidateSize(), 250);
 
             // Adiciona marcadores numerados
             oss.forEach((os, i) => {
@@ -2262,13 +2335,72 @@ service cloud.firestore {
         }
 
         async function deletarOS(osId) {
-            if (!confirm(`Apagar OS #${osId} permanentemente? Essa ação não pode ser desfeita.`)) return;
+            if (!confirm(`Mover OS #${osId} para Excluídas?`)) return;
             try {
-                await colOSS.doc(String(osId)).delete();
+                const excluidaEm  = new Date().toLocaleString('pt-BR');
+                const excluidaPor = state.usuarioLogado?.nomeGestor || 'gestor';
+                await _updateOS(osId, { status: 'excluida', excluidaEm, excluidaPor });
                 document.getElementById('painel-atribuicao').innerHTML = '<p class="text-slate-400 text-sm text-center mt-8">Selecione uma OS ao lado.</p>';
                 filtrarFilaOS(filtroOSAtual);
             } catch(err) {
-                alert('Erro ao apagar OS: ' + err.message);
+                alert('Erro ao excluir OS: ' + err.message);
+            }
+        }
+
+        function renderExcluidas() {
+            const el = document.getElementById('lista-excluidas');
+            const badge = document.getElementById('badge-excluidas');
+            if (!el) return;
+            const lista = [...state.ossExcluidas].sort((a, b) => {
+                const ka = _dtSortKey(a.excluidaEm) || '0';
+                const kb = _dtSortKey(b.excluidaEm) || '0';
+                return kb.localeCompare(ka); // mais recente primeiro
+            });
+            if (badge) badge.textContent = lista.length;
+            if (lista.length === 0) {
+                el.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Nenhuma OS excluída.</p>';
+                return;
+            }
+            const isMaster = state.usuarioLogado?.master === true;
+            el.innerHTML = lista.map(os => `
+                <div class="bg-slate-800/50 border border-rose-500/20 rounded-xl p-3 flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap mb-0.5">
+                            <span class="font-bold text-sm text-slate-200">#${os.id} — ${os.cliente}</span>
+                            <span class="text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-1.5 py-0.5 rounded-full font-bold">Excluída</span>
+                        </div>
+                        <p class="text-xs text-slate-400 truncate mb-1">${os.falha}</p>
+                        <p class="text-[10px] text-slate-500">
+                            <i class="fas fa-trash mr-0.5"></i>${os.excluidaEm || '—'}
+                            ${os.excluidaPor ? '· <span class="text-slate-400">'+os.excluidaPor+'</span>' : ''}
+                            ${os.abertaEm ? ' &nbsp;·&nbsp; <i class="fas fa-door-open mr-0.5"></i>Aberta: '+os.abertaEm.slice(0,16) : ''}
+                        </p>
+                    </div>
+                    <div class="flex gap-1.5 flex-shrink-0">
+                        <button onclick="restaurarOS(${os.id})" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold hover:bg-emerald-500/40 transition" title="Restaurar">
+                            <i class="fas fa-rotate-left mr-1"></i>Restaurar
+                        </button>
+                        ${isMaster ? `<button onclick="apagarOSDefinitivo(${os.id})" class="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center hover:bg-red-500/30 transition" title="Apagar definitivamente"><i class="fas fa-fire text-xs"></i></button>` : ''}
+                    </div>
+                </div>`).join('');
+        }
+
+        async function restaurarOS(osId) {
+            if (!confirm(`Restaurar OS #${osId} para Abertas?`)) return;
+            try {
+                await _updateOS(osId, { status: 'aberta', excluidaEm: null, excluidaPor: null });
+            } catch(err) {
+                alert('Erro ao restaurar OS: ' + err.message);
+            }
+        }
+
+        async function apagarOSDefinitivo(osId) {
+            if (!state.usuarioLogado || !state.usuarioLogado.master) return;
+            if (!confirm(`Apagar OS #${osId} PERMANENTEMENTE? Isso não pode ser desfeito.`)) return;
+            try {
+                await colOSS.doc(String(osId)).delete();
+            } catch(err) {
+                alert('Erro ao apagar: ' + err.message);
             }
         }
 
@@ -2519,6 +2651,45 @@ service cloud.firestore {
             }
 
             const tecId = state.usuarioLogado.id;
+
+            // Aviso de OSs em atraso
+            const _hoje = new Date();
+            const hojeKey = `${_hoje.getFullYear()}${String(_hoje.getMonth()+1).padStart(2,'0')}${String(_hoje.getDate()).padStart(2,'0')}`;
+            const ossAtrasadas = state.oss.filter(o => {
+                if (!o.tecnicosIds || !o.tecnicosIds.includes(tecId)) return false;
+                if (o.status !== 'atribuida') return false;
+                if (!o.tratativa?.data) return false;
+                const m = String(o.tratativa.data).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                if (!m) return false;
+                const oKey = `${m[3]}${String(m[2]).padStart(2,'0')}${String(m[1]).padStart(2,'0')}`;
+                return oKey < hojeKey;
+            });
+            const avisoEl = document.getElementById('tec-aviso-atrasadas');
+            if (avisoEl) {
+                if (ossAtrasadas.length === 0) {
+                    avisoEl.classList.add('hidden');
+                    avisoEl.innerHTML = '';
+                } else {
+                    const porDia = {};
+                    ossAtrasadas.forEach(o => { porDia[o.tratativa.data] = (porDia[o.tratativa.data] || 0) + 1; });
+                    const linhas = Object.entries(porDia)
+                        .sort(([a], [b]) => {
+                            const ka = a.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                            const kb = b.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                            if (!ka || !kb) return 0;
+                            return `${ka[3]}${ka[2].padStart(2,'0')}${ka[1].padStart(2,'0')}`.localeCompare(`${kb[3]}${kb[2].padStart(2,'0')}${kb[1].padStart(2,'0')}`);
+                        })
+                        .map(([data, qtd]) => `<span class="font-bold text-amber-300">${data}</span> — ${qtd} OS${qtd > 1 ? 's' : ''} não encerrada${qtd > 1 ? 's' : ''}`)
+                        .join('<br>');
+                    avisoEl.classList.remove('hidden');
+                    avisoEl.innerHTML = `
+                        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+                            <p class="font-bold text-amber-400 text-sm mb-1.5 flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> OS(s) com data de atendimento em atraso</p>
+                            <p class="text-amber-200/80 text-xs leading-relaxed">${linhas}</p>
+                        </div>`;
+                }
+            }
+
             const diaStr = _resolverData(diaFiltroTec);
             const labelEl = document.getElementById('tec-dia-label');
             if (labelEl) labelEl.textContent = `${_labelDia(diaFiltroTec)} — ${diaStr}`;
@@ -2823,6 +2994,18 @@ service cloud.firestore {
         }
         function _dateKey(d) { return d.toLocaleDateString('pt-BR'); }
         function _addDays(d, n) { const r = new Date(d); r.setDate(r.getDate()+n); return r; }
+        // "dd/mm/yyyy, HH:MM..." → sortable "yyyymmddHHMM" string (returns null if unparseable)
+        function _dtSortKey(str) {
+            if (!str) return null;
+            const m = String(str).match(/(\d{2})\/(\d{2})\/(\d{4}),?\s*(\d{2}):(\d{2})/);
+            return m ? `${m[3]}${m[2]}${m[1]}${m[4]}${m[5]}` : null;
+        }
+        // tratativa date+hora → sortable "yyyymmddHHMM"
+        function _tratSortKey(os) {
+            if (!os.tratativa?.data) return '999999999999';
+            const m = String(os.tratativa.data).match(/(\d{2})\/(\d{2})\/(\d{4})/);
+            return m ? `${m[3]}${m[2]}${m[1]}${(os.tratativa.hora||'00:00').replace(':','')}` : '999999999999';
+        }
 
         function _haversineKm(lat1, lon1, lat2, lon2) {
             const R = 6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
