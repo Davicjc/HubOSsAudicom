@@ -305,7 +305,7 @@
             <div class="max-w-7xl mx-auto px-4 flex overflow-x-auto gap-1 border-t border-slate-700/50">
                 <button onclick="switchTab('tab-dashboard')" id="btn-tab-dashboard" class="px-4 py-3 font-semibold text-sm border-b-2 border-indigo-500 text-indigo-400 whitespace-nowrap"><i class="fas fa-chart-pie mr-2"></i>Dashboard</button>
                 <button onclick="switchTab('tab-nova-os')" id="btn-tab-nova-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-plus-circle mr-2"></i>Novo Agendamento</button>
-                <button onclick="switchTab('tab-os')" id="btn-tab-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-list-check mr-2"></i>Gestão de OS & Mapa</button>
+                <button onclick="switchTab('tab-os')" id="btn-tab-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-list-check mr-2"></i>Gestão de OS e Mapa</button>
                 <button onclick="switchTab('tab-tecnicos')" id="btn-tab-tecnicos" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-users mr-2"></i>Técnicos & Agenda</button>
                 <button onclick="switchTab('tab-agenda-visual')" id="btn-tab-agenda-visual" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-calendar-day mr-2"></i>Agenda Visual</button>
                 <button onclick="switchTab('tab-adm')" id="btn-tab-adm" class="hidden px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-amber-400 hover:text-amber-300 whitespace-nowrap"><i class="fas fa-shield-halved mr-2"></i>ADM</button>
@@ -573,7 +573,12 @@
                 <div class="glass-panel rounded-2xl p-5 mb-6">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="font-bold flex items-center gap-2"><i class="fas fa-trash-can text-rose-400"></i> OSs Excluídas</h3>
-                        <span id="badge-excluidas" class="text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full">0</span>
+                        <div class="flex items-center gap-2">
+                            <button id="btn-apagar-todas-excluidas" onclick="apagarTodasExcluidas()" class="hidden px-3 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/30 text-red-400 border border-red-500/20 text-xs font-bold transition flex items-center gap-1.5">
+                                <i class="fas fa-fire"></i> Apagar Todas
+                            </button>
+                            <span id="badge-excluidas" class="text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full">0</span>
+                        </div>
                     </div>
                     <div id="lista-excluidas" class="space-y-2"></div>
                 </div>
@@ -2796,11 +2801,13 @@ service cloud.firestore {
                 return kb.localeCompare(ka); // mais recente primeiro
             });
             if (badge) badge.textContent = lista.length;
+            const isMaster = state.usuarioLogado?.master === true;
+            const btnTodas = document.getElementById('btn-apagar-todas-excluidas');
+            if (btnTodas) btnTodas.classList.toggle('hidden', !(isMaster && lista.length > 0));
             if (lista.length === 0) {
                 el.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Nenhuma OS excluída.</p>';
                 return;
             }
-            const isMaster = state.usuarioLogado?.master === true;
             el.innerHTML = lista.map(os => `
                 <div class="bg-slate-800/50 border border-rose-500/20 rounded-xl p-3 flex items-start justify-between gap-3">
                     <div class="min-w-0 flex-1">
@@ -2841,6 +2848,22 @@ service cloud.firestore {
             } catch(err) {
                 alert('Erro ao apagar: ' + err.message);
             }
+        }
+
+        async function apagarTodasExcluidas() {
+            if (!state.usuarioLogado?.master) return;
+            const total = state.ossExcluidas.length;
+            if (total === 0) return;
+            if (!confirm(`Apagar PERMANENTEMENTE todas as ${total} OSs excluídas? Isso não pode ser desfeito.`)) return;
+            const btn = document.getElementById('btn-apagar-todas-excluidas');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Apagando...'; }
+            let erros = 0;
+            for (const os of [...state.ossExcluidas]) {
+                try { await colOSS.doc(String(os.id)).delete(); }
+                catch(e) { erros++; }
+            }
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-fire"></i> Apagar Todas'; }
+            if (erros > 0) alert(`Concluído com ${erros} erro(s).`);
         }
 
         async function mudarStatusOS(osId, novoStatus) {
@@ -3953,16 +3976,9 @@ service cloud.firestore {
                 </div>
             </div>`;
 
-            // Restore scroll position or jump to current/morning time on first open
+            // Restore scroll position; always start at top on first open
             grid.scrollLeft = prevScrollX;
-            if (prevScroll > 0) {
-                grid.scrollTop = prevScroll;
-            } else {
-                const targetY = isHoje
-                    ? Math.max(0, ((new Date().getHours() - 1) - _AV_H_INI) * _AV_PX_H)
-                    : 2 * _AV_PX_H;
-                grid.scrollTop = targetY;
-            }
+            grid.scrollTop  = prevScroll;
         }
 
         // ── AGENDA VISUAL PAINEL ─────────────────────────────────
@@ -3990,13 +4006,29 @@ service cloud.firestore {
                 : '';
 
             p.innerHTML = `
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0">
                         <span style="font-size:15px;font-weight:900;color:${cor}">#${os.id}</span>
-                        <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px;color:${sCor};background:${sCor}22;border:1px solid ${sCor}44">${sLbl}</span>
+                        <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px;color:${sCor};background:${sCor}22;border:1px solid ${sCor}44;white-space:nowrap">${sLbl}</span>
                     </div>
-                    <button onclick="document.getElementById('av-painel-os').classList.add('hidden')"
-                        style="width:26px;height:26px;border-radius:50%;background:#334155;border:none;color:#94a3b8;cursor:pointer;font-size:13px;line-height:1;flex-shrink:0">✕</button>
+                    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+                        <button onclick="abrirEditarOS(${os.id})"
+                            style="height:28px;padding:0 10px;border-radius:8px;background:rgba(99,102,241,.2);color:#818cf8;border:1px solid rgba(99,102,241,.3);font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px"
+                            onmouseover="this.style.background='#4f46e5';this.style.color='#fff'" onmouseout="this.style.background='rgba(99,102,241,.2)';this.style.color='#818cf8'">
+                            <i class="fas fa-pen" style="font-size:10px"></i> Editar
+                        </button>
+                        <button onclick="deletarOS(${os.id})"
+                            style="width:28px;height:28px;border-radius:8px;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);cursor:pointer;display:flex;align-items:center;justify-content:center"
+                            title="Apagar OS"
+                            onmouseover="this.style.background='rgba(239,68,68,.3)'" onmouseout="this.style.background='rgba(239,68,68,.1)'">
+                            <i class="fas fa-trash" style="font-size:10px"></i>
+                        </button>
+                        <button onclick="document.getElementById('av-painel-os').classList.add('hidden')"
+                            style="width:28px;height:28px;border-radius:8px;background:#334155;border:none;color:#94a3b8;cursor:pointer;display:flex;align-items:center;justify-content:center"
+                            onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'">
+                            <i class="fas fa-times" style="font-size:11px"></i>
+                        </button>
+                    </div>
                 </div>
                 <p style="font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:14px;word-break:break-word;line-height:1.3">${os.cliente||''}</p>
                 ${row('Falha / Descrição', os.falha, 'fas fa-exclamation-circle')}
