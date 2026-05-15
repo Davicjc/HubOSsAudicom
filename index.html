@@ -308,6 +308,7 @@
                 <button onclick="switchTab('tab-os')" id="btn-tab-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-list-check mr-2"></i>Gestão de OS e Mapa</button>
                 <button onclick="switchTab('tab-tecnicos')" id="btn-tab-tecnicos" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-users mr-2"></i>Técnicos & Agenda</button>
                 <button onclick="switchTab('tab-agenda-visual')" id="btn-tab-agenda-visual" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-calendar-day mr-2"></i>Agenda Visual</button>
+                <button onclick="switchTab('tab-todos-dados')" id="btn-tab-todos-dados" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-database mr-2"></i>Todos os Dados</button>
                 <button onclick="switchTab('tab-adm')" id="btn-tab-adm" class="hidden px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-amber-400 hover:text-amber-300 whitespace-nowrap"><i class="fas fa-shield-halved mr-2"></i>ADM</button>
             </div>
         </nav>
@@ -597,6 +598,31 @@
                 <div id="av-grid" style="position:absolute;top:48px;left:0;right:0;bottom:0;background:#0f172a;overflow:scroll;-webkit-overflow-scrolling:touch"></div>
                 <!-- OS detail panel -->
                 <div id="av-painel-os" class="hidden" style="position:absolute;top:60px;right:16px;z-index:50;width:22rem;max-height:calc(100% - 76px);overflow-y:auto;background:#1e293b;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,0.6)"></div>
+            </div>
+
+            <!-- TAB: TODOS OS DADOS -->
+            <div id="tab-todos-dados" class="tab-content animate-fade">
+                <div class="glass-panel rounded-2xl p-5">
+                    <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                        <h3 class="font-bold text-lg flex items-center gap-2"><i class="fas fa-database text-indigo-400"></i> Histórico Completo</h3>
+                        <span id="todos-dados-contador" class="text-xs font-bold bg-slate-700 text-slate-300 px-2.5 py-1 rounded-full">0 registros</span>
+                    </div>
+                    <!-- Busca + filtros -->
+                    <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                        <div class="relative flex-1">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none"></i>
+                            <input type="text" id="todos-dados-busca" placeholder="Buscar por cliente, #OS, código, técnico, falha, ponto..." oninput="renderTodosDados()" class="w-full bg-slate-800/50 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition">
+                        </div>
+                        <div class="flex gap-1.5 flex-wrap">
+                            <button onclick="setFiltroTodos('todos')"     id="td-f-todos"     class="px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap bg-indigo-600 text-white border border-indigo-500">Todos</button>
+                            <button onclick="setFiltroTodos('aberta')"    id="td-f-aberta"    class="px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-500">Abertas</button>
+                            <button onclick="setFiltroTodos('atribuida')" id="td-f-atribuida" class="px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-500">Atribuídas</button>
+                            <button onclick="setFiltroTodos('fechada')"   id="td-f-fechada"   class="px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-500">Concluídas</button>
+                            <button onclick="setFiltroTodos('excluida')"  id="td-f-excluida"  class="px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-500">Excluídas</button>
+                        </div>
+                    </div>
+                    <div id="todos-dados-lista" class="space-y-2"></div>
+                </div>
             </div>
 
             <!-- TAB: ADM (visível só para super admin) -->
@@ -1297,6 +1323,8 @@ service cloud.firestore {
                 if (tabAdm && tabAdm.classList.contains('active')) renderExcluidas();
                 const tabAV = document.getElementById('tab-agenda-visual');
                 if (tabAV && tabAV.classList.contains('active')) renderAgendaVisual();
+                const tabTD = document.getElementById('tab-todos-dados');
+                if (tabTD && tabTD.classList.contains('active')) renderTodosDados();
             } else if (state.usuarioLogado.tipo === 'tecnico') {
                 renderTecAppLista();
             }
@@ -1398,6 +1426,9 @@ service cloud.firestore {
             if (id === 'tab-adm') {
                 renderSenhasGestor();
                 renderExcluidas();
+            }
+            if (id === 'tab-todos-dados') {
+                renderTodosDados();
             }
         }
 
@@ -2933,6 +2964,112 @@ service cloud.firestore {
             } catch(err) {
                 alert('Erro ao apagar: ' + err.message);
             }
+        }
+
+        // ── TODOS OS DADOS ────────────────────────────────────────
+        let _filtroTodos = 'todos';
+
+        function setFiltroTodos(f) {
+            _filtroTodos = f;
+            ['todos','aberta','atribuida','fechada','excluida'].forEach(s => {
+                const btn = document.getElementById('td-f-' + s);
+                if (!btn) return;
+                if (s === f) {
+                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap bg-indigo-600 text-white border border-indigo-500';
+                } else {
+                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-500';
+                }
+            });
+            renderTodosDados();
+        }
+
+        function renderTodosDados() {
+            const cont    = document.getElementById('todos-dados-lista');
+            const countEl = document.getElementById('todos-dados-contador');
+            if (!cont) return;
+
+            // Combine all OSs, newest first (id = Date.now() at creation)
+            const todas = [...state.oss, ...state.ossExcluidas]
+                .sort((a, b) => Number(b.id) - Number(a.id));
+
+            let lista = _filtroTodos === 'todos' ? todas : todas.filter(o => o.status === _filtroTodos);
+
+            const q = (document.getElementById('todos-dados-busca')?.value || '').trim().toLowerCase();
+            if (q) {
+                lista = lista.filter(o => {
+                    const tecNomes = (o.tecnicosIds || [])
+                        .map(tid => state.tecnicos.find(t => t.id === tid)?.nome || '')
+                        .join(' ');
+                    return [
+                        String(o.id), o.cliente, o.ponto, o.codigo, o.falha,
+                        o.local, o.telefone, o.responsavel, o.protocoloHub,
+                        o.protocoloJames, o.status, o.tipo, o.abertaEm,
+                        o.abertaPor, o.excluidaPor, tecNomes,
+                        o.motivoNaoExecutado?.motivo,
+                    ].filter(Boolean).join(' ').toLowerCase().includes(q);
+                });
+            }
+
+            if (countEl) countEl.textContent = `${lista.length} registro${lista.length !== 1 ? 's' : ''}`;
+
+            if (lista.length === 0) {
+                cont.innerHTML = '<p class="text-center text-sm text-slate-500 py-10"><i class="fas fa-inbox mr-2 opacity-40"></i>Nenhum registro encontrado</p>';
+                return;
+            }
+
+            const S_LBL = { aberta:'Aberta', atribuida:'Atribuída', fechada:'Concluída', excluida:'Excluída' };
+            const S_CLS = {
+                aberta:    'text-amber-400 bg-amber-500/10 border-amber-500/30',
+                atribuida: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+                fechada:   'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+                excluida:  'text-rose-400 bg-rose-500/10 border-rose-500/30',
+            };
+
+            cont.innerHTML = lista.map(os => {
+                const sLbl    = S_LBL[os.status] || os.status;
+                const sCls    = S_CLS[os.status]  || 'text-slate-400 bg-slate-500/10 border-slate-500/30';
+                const tipoCor = _tipoOsCor(os);
+                const tipoLbl = _tipoOsLabel(os);
+
+                const tecNomes = (os.tecnicosIds || [])
+                    .map(tid => state.tecnicos.find(t => t.id === tid)?.nome)
+                    .filter(Boolean);
+
+                const infoRows = [
+                    os.ponto      ? `<span class="text-[10px] text-slate-500"><i class="fas fa-tag mr-1 opacity-50"></i>${os.ponto}</span>` : '',
+                    os.local      ? `<span class="text-[10px] text-slate-500"><i class="fas fa-map-marker-alt mr-1 opacity-50"></i>${os.local}</span>` : '',
+                    os.abertaEm   ? `<span class="text-[10px] text-slate-500"><i class="fas fa-door-open mr-1 opacity-50"></i>${os.abertaEm.slice(0,16)}${os.abertaPor ? ' · <span class="text-slate-400">'+os.abertaPor+'</span>' : ''}</span>` : '',
+                    tecNomes.length ? `<span class="text-[10px] text-indigo-300/80"><i class="fas fa-users mr-1 opacity-50"></i>${tecNomes.join(', ')}</span>` : '',
+                    os.tratativa  ? `<span class="text-[10px] text-slate-400"><i class="fas fa-calendar-check mr-1 opacity-50"></i>${os.tratativa.data} ${os.tratativa.hora}${os.tratativa.horaFim ? ' – '+os.tratativa.horaFim : ''}</span>` : '',
+                    os.encerradoEm ? `<span class="text-[10px] text-emerald-500/80"><i class="fas fa-check-circle mr-1 opacity-60"></i>Concluída ${os.encerradoEm.slice(0,16)}</span>` : '',
+                    os.excluidaEm ? `<span class="text-[10px] text-rose-400/80"><i class="fas fa-trash mr-1 opacity-60"></i>Excluída ${os.excluidaEm.slice(0,16)}${os.excluidaPor ? ' · '+os.excluidaPor : ''}</span>` : '',
+                    os.motivoNaoExecutado ? `<span class="text-[10px] text-rose-300/80"><i class="fas fa-ban mr-1 opacity-60"></i>Não exec.: ${os.motivoNaoExecutado.motivo}</span>` : '',
+                ].filter(Boolean).join('');
+
+                const clickable = os.status !== 'excluida';
+                const clickAttr = clickable
+                    ? `onclick="switchTab('tab-os');setTimeout(()=>abrirPainelAtribuicao(${os.id}),280)" style="cursor:pointer"`
+                    : `style="cursor:default"`;
+
+                return `<div ${clickAttr} class="bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-3 ${clickable ? 'hover:border-indigo-500/50 hover:bg-slate-800/70' : ''} transition">
+                    <div class="flex items-start gap-3">
+                        <div class="flex flex-col items-center gap-1.5 flex-shrink-0 pt-0.5 min-w-[28px]">
+                            <span class="text-xs font-black text-indigo-400 leading-none">#${os.id}</span>
+                            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${tipoCor}" title="${tipoLbl}"></span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap mb-1">
+                                <span class="font-bold text-sm text-slate-100 truncate">${os.cliente || ''}</span>
+                                ${os.codigo ? `<span class="text-[10px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">${os.codigo}</span>` : ''}
+                                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full border ${sCls}">${sLbl}</span>
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style="color:${tipoCor};background:${tipoCor}22;border:1px solid ${tipoCor}44">${tipoLbl}</span>
+                            </div>
+                            ${os.falha ? `<p class="text-xs text-slate-400 mb-1.5 line-clamp-2">${os.falha}</p>` : ''}
+                            <div class="flex flex-wrap gap-x-3 gap-y-0.5">${infoRows}</div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
         }
 
         async function apagarTodasExcluidas() {
