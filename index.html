@@ -100,6 +100,11 @@
         .leaflet-tooltip { background: #1e293b; color: #f8fafc; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.4); font-size: 12px; padding: 5px 10px; }
         .leaflet-tooltip::before { border-right-color: #1e293b; }
 
+        .av-tec-col.av-drop-zone { background: rgba(99,102,241,0.09) !important; }
+        .av-os-block { transition: opacity 0.15s, filter 0.15s; user-select: none; }
+        .av-os-block:hover { filter: brightness(1.2); }
+        .av-os-block:active { cursor: grabbing; }
+
         #signature-pad { touch-action: none; background: #cbd5e1; border-radius: 0.5rem; }
 
         /* Loading overlay */
@@ -250,6 +255,7 @@
                 <button onclick="switchTab('tab-nova-os')" id="btn-tab-nova-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-plus-circle mr-2"></i>Novo Agendamento</button>
                 <button onclick="switchTab('tab-os')" id="btn-tab-os" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-list-check mr-2"></i>Gestão de OS & Mapa</button>
                 <button onclick="switchTab('tab-tecnicos')" id="btn-tab-tecnicos" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-users mr-2"></i>Técnicos & Agenda</button>
+                <button onclick="switchTab('tab-agenda-visual')" id="btn-tab-agenda-visual" class="px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap"><i class="fas fa-calendar-day mr-2"></i>Agenda Visual</button>
                 <button onclick="switchTab('tab-adm')" id="btn-tab-adm" class="hidden px-4 py-3 font-semibold text-sm border-b-2 border-transparent text-amber-400 hover:text-amber-300 whitespace-nowrap"><i class="fas fa-shield-halved mr-2"></i>ADM</button>
             </div>
         </nav>
@@ -470,6 +476,22 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="lista-tecnicos-cards"></div>
                     </div>
                 </div>
+            </div>
+
+            <!-- TAB: AGENDA VISUAL -->
+            <div id="tab-agenda-visual" class="tab-content animate-fade fixed inset-0 z-30" style="background:#0f172a">
+                <!-- Top bar: day navigation -->
+                <div style="position:absolute;top:0;left:0;right:0;height:48px;background:#0f172a;border-bottom:1px solid rgba(100,116,139,0.3);display:flex;align-items:center;gap:8px;padding:0 16px;z-index:21">
+                    <button onclick="avNavDia(-1)" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition"><i class="fas fa-chevron-left text-xs"></i></button>
+                    <button onclick="avNavDia(1)" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition"><i class="fas fa-chevron-right text-xs"></i></button>
+                    <button onclick="avNavDia(0)" class="px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition">Hoje</button>
+                    <span id="av-dia-label" class="font-bold text-slate-200 text-sm ml-1"></span>
+                    <span class="ml-auto text-[11px] text-slate-500 hidden sm:block"><i class="fas fa-hand-paper mr-1 opacity-60"></i>Arraste um bloco para reagendar</span>
+                </div>
+                <!-- Scrollable calendar grid -->
+                <div id="av-grid" style="position:absolute;top:48px;left:0;right:0;bottom:0;background:#0f172a;overflow:scroll;-webkit-overflow-scrolling:touch"></div>
+                <!-- OS detail panel -->
+                <div id="av-painel-os" class="hidden" style="position:absolute;top:60px;right:16px;z-index:50;width:22rem;max-height:calc(100% - 76px);overflow-y:auto;background:#1e293b;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,0.6)"></div>
             </div>
 
             <!-- TAB: ADM (visível só para super admin) -->
@@ -1143,6 +1165,8 @@ service cloud.firestore {
                 if (_rotasAtivas) _desenharRotasTodas();
                 const tabAdm = document.getElementById('tab-adm');
                 if (tabAdm && tabAdm.classList.contains('active')) renderExcluidas();
+                const tabAV = document.getElementById('tab-agenda-visual');
+                if (tabAV && tabAV.classList.contains('active')) renderAgendaVisual();
             } else if (state.usuarioLogado.tipo === 'tecnico') {
                 renderTecAppLista();
             }
@@ -1229,6 +1253,11 @@ service cloud.firestore {
                 const navEl = document.querySelector('#view-gestor nav');
                 if (navEl) document.getElementById('tab-os').style.top = navEl.offsetHeight + 'px';
                 setTimeout(() => { if (mapa) mapa.invalidateSize(); else initMap(); renderMapaOSs(); }, 200);
+            }
+            if (id === 'tab-agenda-visual') {
+                const navEl = document.querySelector('#view-gestor nav');
+                if (navEl) document.getElementById('tab-agenda-visual').style.top = navEl.offsetHeight + 'px';
+                renderAgendaVisual();
             }
             if (id === 'tab-dashboard') {
                 renderDashboard();
@@ -3640,6 +3669,335 @@ service cloud.firestore {
                     <td class="py-3 text-center font-bold ${r.km>0?'text-blue-400':'text-slate-600'}">${r.km>0?r.km.toFixed(1)+' km':'—'}</td>
                     <td class="py-3 text-center text-slate-400">${r.media}</td>
                 </tr>`).join('')}</tbody></table>`;
+        }
+
+        // ── AGENDA VISUAL ─────────────────────────────────────────
+        const _AV_PALETTE = [
+            '#818cf8','#34d399','#fb923c','#a78bfa','#f472b6',
+            '#38bdf8','#facc15','#4ade80','#f87171','#c084fc','#2dd4bf','#fb7185'
+        ];
+        function _avOsColor(os) {
+            return _AV_PALETTE[Number(os.id) % _AV_PALETTE.length];
+        }
+
+        const _AV_H_INI = 7;
+        const _AV_H_FIM = 21;
+        const _AV_PX_H  = 80;
+        const _AV_COL_W = 200;
+        let _agendaDiaOffset = 0;
+        let _avDragOsId = null;
+        let _avDragSrcTecId = null;
+        let _avDropIndicator = null;
+
+        function avNavDia(v) {
+            _agendaDiaOffset = (v === 0) ? 0 : _agendaDiaOffset + v;
+            renderAgendaVisual();
+        }
+
+        function _avGetDia() {
+            const d = new Date();
+            d.setDate(d.getDate() + _agendaDiaOffset);
+            return d;
+        }
+
+        function _avDiaKey(d) {
+            return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+        }
+
+        function _avFmtDia(d) {
+            const DIAS  = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+            const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+            const suf = _agendaDiaOffset === 0 ? ' — Hoje' : _agendaDiaOffset === -1 ? ' — Ontem' : _agendaDiaOffset === 1 ? ' — Amanhã' : '';
+            return `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]}${suf}`;
+        }
+
+        function _avMatchDia(tratativaData, diaKey) {
+            if (!tratativaData) return false;
+            const m = String(tratativaData).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+            if (!m) return false;
+            return `${String(m[1]).padStart(2,'0')}/${String(m[2]).padStart(2,'0')}/${m[3]}` === diaKey;
+        }
+
+        function _avHoraToY(hora) {
+            const parts = String(hora||'08:00').split(':').map(Number);
+            return ((parts[0] + (parts[1]||0) / 60) - _AV_H_INI) * _AV_PX_H;
+        }
+
+        function _avYToHora(y) {
+            const totalMins = _AV_H_INI * 60 + Math.round((y / _AV_PX_H) * 60 / 15) * 15;
+            const h = Math.max(_AV_H_INI, Math.min(Math.floor(totalMins / 60), _AV_H_FIM - 1));
+            const m = totalMins % 60;
+            return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+        }
+
+        function renderAgendaVisual() {
+            const grid = document.getElementById('av-grid');
+            if (!grid) return;
+
+            const dia    = _avGetDia();
+            const diaKey = _avDiaKey(dia);
+            const isHoje = _agendaDiaOffset === 0;
+
+            const lbl = document.getElementById('av-dia-label');
+            if (lbl) lbl.textContent = _avFmtDia(dia);
+
+            const tecs = state.tecnicos;
+            if (!tecs.length) {
+                grid.innerHTML = '<p style="color:#64748b;text-align:center;margin-top:80px;font-size:14px">Nenhum técnico cadastrado.</p>';
+                return;
+            }
+
+            const totalH  = (_AV_H_FIM - _AV_H_INI) * _AV_PX_H;
+            const totalW  = 56 + tecs.length * _AV_COL_W;
+
+            // ── Time labels ──
+            let timeHtml = '';
+            for (let h = _AV_H_INI; h <= _AV_H_FIM; h++) {
+                const top = (h - _AV_H_INI) * _AV_PX_H;
+                timeHtml += `<div style="position:absolute;top:${top - 8}px;right:6px;font-size:10px;color:#475569;font-family:monospace;line-height:1">${String(h).padStart(2,'0')}:00</div>`;
+            }
+
+            // ── Grid lines ──
+            let lines = '';
+            for (let h = _AV_H_INI; h < _AV_H_FIM; h++) {
+                const y1 = (h - _AV_H_INI) * _AV_PX_H;
+                const y2 = y1 + _AV_PX_H / 2;
+                lines += `<div style="position:absolute;top:${y1}px;left:0;right:0;border-top:1px solid rgba(100,116,139,0.22)"></div>`;
+                lines += `<div style="position:absolute;top:${y2}px;left:0;right:0;border-top:1px dashed rgba(100,116,139,0.1)"></div>`;
+            }
+
+            // ── Current time ──
+            let nowLine = '';
+            if (isHoje) {
+                const now  = new Date();
+                const nowY = ((now.getHours() + now.getMinutes() / 60) - _AV_H_INI) * _AV_PX_H;
+                if (nowY >= 0 && nowY <= totalH) {
+                    nowLine = `<div style="position:absolute;top:${nowY}px;left:0;right:0;z-index:15;pointer-events:none">
+                        <div style="width:10px;height:10px;border-radius:50%;background:#ef4444;position:absolute;left:-5px;top:-5px;box-shadow:0 0 6px #ef4444"></div>
+                        <div style="position:absolute;left:5px;right:0;top:0;border-top:2px solid #ef4444;opacity:0.8"></div>
+                    </div>`;
+                }
+            }
+
+            // ── Tec headers + columns ──
+            let hdrHtml  = '';
+            let colsHtml = '';
+
+            for (const tec of tecs) {
+                const cor = tec.cor || '#6366f1';
+                const ossDoTec = state.oss.filter(o =>
+                    o.status === 'atribuida' &&
+                    o.tecnicosIds && o.tecnicosIds.includes(tec.id) &&
+                    _avMatchDia(o.tratativa?.data, diaKey)
+                );
+
+                // Header cell
+                hdrHtml += `<div style="width:${_AV_COL_W}px;flex-shrink:0;padding:8px 10px;display:flex;align-items:center;gap:8px;border-left:1px solid rgba(100,116,139,0.2)">
+                    <div style="width:26px;height:26px;border-radius:50%;background:${cor};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">${(tec.nome||'?')[0].toUpperCase()}</div>
+                    <div style="min-width:0">
+                        <div style="font-size:12px;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tec.nome}</div>
+                        <div style="font-size:10px;color:#64748b">${ossDoTec.length} OS${ossDoTec.length!==1?'s':''}</div>
+                    </div>
+                </div>`;
+
+                // OS blocks
+                let osBlocks = '';
+                for (const os of ossDoTec) {
+                    const hora   = os.tratativa?.hora || '08:00';
+                    const topPx  = Math.max(0, Math.min(_avHoraToY(hora), totalH - 44));
+                    const osCor  = _avOsColor(os);
+                    osBlocks += `<div class="av-os-block"
+                        draggable="true"
+                        ondragstart="avDragStart(event,'${os.id}')"
+                        ondragend="avDragEnd(event)"
+                        ondragover="event.preventDefault()"
+                        onclick="avAbrirOsPanel('${os.id}')"
+                        data-osid="${os.id}"
+                        style="position:absolute;top:${topPx}px;left:4px;right:4px;height:${_AV_PX_H-6}px;border-radius:8px;border:2px solid ${osCor};background:${osCor}22;padding:5px 7px;cursor:grab;z-index:5;overflow:hidden;box-sizing:border-box">
+                        <div style="font-size:11px;font-weight:700;color:${osCor};line-height:1.2">#${os.id}</div>
+                        <div style="font-size:11px;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">${os.cliente||''}</div>
+                        <div style="font-size:10px;color:#94a3b8;line-height:1.2">${hora}</div>
+                    </div>`;
+                }
+
+                // Column
+                colsHtml += `<div class="av-tec-col"
+                    data-tecid="${tec.id}"
+                    ondragover="avDragOver(event,this)"
+                    ondragleave="avDragLeave(event,this)"
+                    ondrop="avDrop(event,this,${tec.id})"
+                    style="width:${_AV_COL_W}px;flex-shrink:0;position:relative;height:${totalH}px;border-left:1px solid rgba(100,116,139,0.2)">
+                    ${osBlocks}
+                </div>`;
+            }
+
+            const tecColsW = tecs.length * _AV_COL_W;
+            const prevScroll = grid.scrollTop;
+            const prevScrollX = grid.scrollLeft;
+            grid.innerHTML = `<div style="width:${totalW}px">
+                <!-- Sticky top header -->
+                <div style="display:flex;position:sticky;top:0;z-index:20;background:#0f172a;border-bottom:1px solid rgba(100,116,139,0.3)">
+                    <div style="width:56px;flex-shrink:0;position:sticky;left:0;z-index:25;background:#0f172a"></div>
+                    <div style="display:flex;flex-shrink:0;width:${tecColsW}px">${hdrHtml}</div>
+                </div>
+                <!-- Body -->
+                <div style="display:flex">
+                    <!-- Sticky left time col -->
+                    <div style="width:56px;flex-shrink:0;position:sticky;left:0;z-index:10;background:#0f172a">
+                        <div style="height:${totalH}px;position:relative">${timeHtml}</div>
+                    </div>
+                    <!-- Tec columns + grid lines + now line -->
+                    <div style="display:flex;flex-shrink:0;position:relative;width:${tecColsW}px;height:${totalH}px">
+                        <div style="position:absolute;inset:0;pointer-events:none">${lines}${nowLine}</div>
+                        ${colsHtml}
+                    </div>
+                </div>
+            </div>`;
+
+            // Restore scroll position or jump to current/morning time on first open
+            grid.scrollLeft = prevScrollX;
+            if (prevScroll > 0) {
+                grid.scrollTop = prevScroll;
+            } else {
+                const targetY = isHoje
+                    ? Math.max(0, ((new Date().getHours() - 1) - _AV_H_INI) * _AV_PX_H)
+                    : 2 * _AV_PX_H;
+                grid.scrollTop = targetY;
+            }
+        }
+
+        // ── AGENDA VISUAL PAINEL ─────────────────────────────────
+        function avAbrirOsPanel(osId) {
+            const os = state.oss.find(o => String(o.id) === String(osId));
+            const p  = document.getElementById('av-painel-os');
+            if (!os || !p) return;
+
+            const cor   = _avOsColor(os);
+            const tecs  = (os.tecnicosIds || [])
+                .map(id => state.tecnicos.find(t => t.id === id))
+                .filter(Boolean);
+            const tecNomes = tecs.map(t => `<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:50%;background:${t.cor||'#6366f1'};display:inline-block"></span>${t.nome}</span>`).join(', ');
+
+            const STATUS = { aberta:'Aberta', atribuida:'Atribuída', fechada:'Concluída', excluida:'Excluída' };
+            const SCOR   = { aberta:'#f59e0b', atribuida:'#818cf8', fechada:'#10b981', excluida:'#f43f5e' };
+            const sLbl   = STATUS[os.status] || os.status;
+            const sCor   = SCOR[os.status]   || '#94a3b8';
+
+            const row = (lbl, val, icon = '') => val
+                ? `<div style="margin-bottom:8px">
+                       <p style="font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">${lbl}</p>
+                       <p style="font-size:13px;color:#cbd5e1;word-break:break-word;line-height:1.4">${icon?`<i class="${icon}" style="margin-right:4px;opacity:.5;font-size:11px"></i>`:''}${val}</p>
+                   </div>`
+                : '';
+
+            p.innerHTML = `
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <span style="font-size:15px;font-weight:900;color:${cor}">#${os.id}</span>
+                        <span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:9999px;color:${sCor};background:${sCor}22;border:1px solid ${sCor}44">${sLbl}</span>
+                    </div>
+                    <button onclick="document.getElementById('av-painel-os').classList.add('hidden')"
+                        style="width:26px;height:26px;border-radius:50%;background:#334155;border:none;color:#94a3b8;cursor:pointer;font-size:13px;line-height:1;flex-shrink:0">✕</button>
+                </div>
+                <p style="font-size:16px;font-weight:700;color:#f1f5f9;margin-bottom:14px;word-break:break-word;line-height:1.3">${os.cliente||''}</p>
+                ${row('Falha / Descrição', os.falha, 'fas fa-exclamation-circle')}
+                ${row('Técnico(s)', tecNomes || '—')}
+                ${os.tratativa ? row('Agendado para', `${os.tratativa.data} às ${os.tratativa.hora}`, 'fas fa-calendar-check') : ''}
+                ${row('Local', os.local, 'fas fa-map-marker-alt')}
+                ${row('Telefone', os.telefone, 'fas fa-phone')}
+                ${row('Disponibilidade', os.disponibilidade, 'fas fa-clock')}
+                ${row('Ponto HubSoft', os.ponto, 'fas fa-tag')}
+                ${row('Código HubSoft', os.codigo, 'fas fa-hashtag')}
+                ${row('Responsável', os.responsavel, 'fas fa-user')}
+                ${os.notasExecucao ? row('Notas de execução', os.notasExecucao, 'fas fa-clipboard-check') : ''}
+                <button onclick="switchTab('tab-os');setTimeout(()=>abrirPainelAtribuicao('${os.id}'),250)"
+                    style="width:100%;margin-top:14px;background:#4f46e5;color:#fff;border:none;padding:10px 0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s"
+                    onmouseover="this.style.background='#4338ca'" onmouseout="this.style.background='#4f46e5'">
+                    <i class="fas fa-map-marked-alt" style="margin-right:6px"></i>Ver & Atribuir no Mapa
+                </button>`;
+
+            p.classList.remove('hidden');
+        }
+
+        // ── AGENDA VISUAL DRAG & DROP ─────────────────────────────
+        function avDragStart(e, osId) {
+            _avDragOsId = String(osId);
+            const srcCol = e.target.closest('.av-tec-col');
+            _avDragSrcTecId = srcCol ? Number(srcCol.dataset.tecid) : null;
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => { if (e.target) e.target.style.opacity = '0.35'; }, 0);
+        }
+
+        function avDragEnd(e) {
+            if (e.target) e.target.style.opacity = '';
+            _avDragSrcTecId = null;
+            document.querySelectorAll('.av-tec-col').forEach(c => c.classList.remove('av-drop-zone'));
+            if (_avDropIndicator) { try { _avDropIndicator.remove(); } catch(_){} _avDropIndicator = null; }
+        }
+
+        function avDragOver(e, col) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            col.classList.add('av-drop-zone');
+
+            const relY  = e.clientY - col.getBoundingClientRect().top;
+            const hora  = _avYToHora(relY);
+            const snapY = _avHoraToY(hora);
+
+            if (_avDropIndicator) { try { _avDropIndicator.remove(); } catch(_){} }
+            _avDropIndicator = document.createElement('div');
+            _avDropIndicator.style.cssText = `position:absolute;left:2px;right:2px;top:${snapY}px;height:2px;background:#818cf8;z-index:30;border-radius:2px;pointer-events:none;box-shadow:0 0 6px #818cf8`;
+            _avDropIndicator.innerHTML = `<span style="position:absolute;right:4px;top:-9px;background:#818cf8;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px">${hora}</span>`;
+            col.appendChild(_avDropIndicator);
+        }
+
+        function avDragLeave(e, col) {
+            if (!col.contains(e.relatedTarget)) {
+                col.classList.remove('av-drop-zone');
+                if (_avDropIndicator && col.contains(_avDropIndicator)) {
+                    try { _avDropIndicator.remove(); } catch(_){}
+                    _avDropIndicator = null;
+                }
+            }
+        }
+
+        async function avDrop(e, col, tecId) {
+            e.preventDefault();
+            col.classList.remove('av-drop-zone');
+            if (_avDropIndicator) { try { _avDropIndicator.remove(); } catch(_){} _avDropIndicator = null; }
+            if (!_avDragOsId) return;
+
+            const relY = e.clientY - col.getBoundingClientRect().top;
+            const hora = _avYToHora(relY);
+            const dia  = _avDiaKey(_avGetDia());
+
+            const osId = _avDragOsId;
+            _avDragOsId = null;
+
+            // tecId comes from tec.id which is a number (Date.now()); keep type consistent
+            const tecIdNum = Number(tecId);
+            const os = state.oss.find(o => String(o.id) === osId);
+            if (!os) return;
+
+            // Replace only the source technician; keep all others assigned
+            let novosTecs = [...(os.tecnicosIds || [])];
+            if (_avDragSrcTecId !== null && novosTecs.includes(_avDragSrcTecId)) {
+                novosTecs = novosTecs.map(id => id === _avDragSrcTecId ? tecIdNum : id);
+            } else {
+                novosTecs = [tecIdNum];
+            }
+            // Deduplicate in case target was already in the list
+            novosTecs = [...new Set(novosTecs)];
+
+            try {
+                await _updateOS(osId, {
+                    tecnicosIds: novosTecs,
+                    status: 'atribuida',
+                    tratativa: { ...(os.tratativa || {}), data: dia, hora }
+                });
+            } catch(err) {
+                alert('Erro ao reagendar OS: ' + err.message);
+            }
         }
 
         // ── INIT ──────────────────────────────────────────────────
