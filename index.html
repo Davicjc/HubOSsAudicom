@@ -169,7 +169,11 @@
                            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none mb-1"
                            onkeydown="if(event.key==='Enter') confirmarSenhaGestor()">
                     <p id="gestor-senha-erro" class="text-red-400 text-xs hidden mb-2"><i class="fas fa-exclamation-circle mr-1"></i><span id="gestor-senha-erro-txt">Senha incorreta</span></p>
-                    <div class="flex gap-2 mt-2">
+                    <label class="flex items-start gap-2 mt-2 mb-2 cursor-pointer select-none">
+                        <input type="checkbox" id="gestor-salvar-check" class="mt-0.5 accent-indigo-500 flex-shrink-0">
+                        <span class="text-xs text-slate-400">Salvar acesso <span class="text-slate-600">— não recomendado em computadores ou celulares públicos</span></span>
+                    </label>
+                    <div class="flex gap-2 mt-1">
                         <button onclick="cancelarLoginGestor()" class="flex-1 py-1.5 rounded-lg bg-slate-700 text-sm font-bold">Voltar</button>
                         <button id="btn-entrar-gestor" onclick="confirmarSenhaGestor()" class="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-bold transition">Entrar</button>
                     </div>
@@ -206,7 +210,11 @@
                            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none mb-1"
                            onkeydown="if(event.key==='Enter') confirmarSenhaTecnico()">
                     <p id="tech-senha-erro" class="text-red-400 text-xs hidden mb-2"><i class="fas fa-exclamation-circle mr-1"></i>Senha incorreta</p>
-                    <div class="flex gap-2 mt-2">
+                    <label class="flex items-start gap-2 mt-2 mb-2 cursor-pointer select-none">
+                        <input type="checkbox" id="tech-salvar-check" class="mt-0.5 accent-indigo-500 flex-shrink-0">
+                        <span class="text-xs text-slate-400">Salvar senha <span class="text-slate-600">— não recomendado em computadores ou celulares públicos</span></span>
+                    </label>
+                    <div class="flex gap-2 mt-1">
                         <button onclick="cancelarSenha()" class="flex-1 py-1.5 rounded-lg bg-slate-700 text-sm font-bold">Voltar</button>
                         <button onclick="confirmarSenhaTecnico()" class="flex-1 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-bold transition">Entrar</button>
                     </div>
@@ -1197,6 +1205,26 @@ service cloud.firestore {
             }
         }
 
+        // ── SALVAR ACESSO LOCAL ───────────────────────────────────
+        function _salvarAcessoGestor(nome, senha) {
+            try { localStorage.setItem('hub_gestor_salvo', JSON.stringify({ nome, senha })); } catch(e) {}
+        }
+        function _limparAcessoGestor() {
+            try { localStorage.removeItem('hub_gestor_salvo'); } catch(e) {}
+        }
+        function _carregarAcessoGestor() {
+            try { return JSON.parse(localStorage.getItem('hub_gestor_salvo')); } catch(e) { return null; }
+        }
+        function _salvarAcessoTec(id, senha) {
+            try { localStorage.setItem('hub_tec_salvo', JSON.stringify({ id, senha })); } catch(e) {}
+        }
+        function _limparAcessoTec() {
+            try { localStorage.removeItem('hub_tec_salvo'); } catch(e) {}
+        }
+        function _carregarAcessoTec() {
+            try { return JSON.parse(localStorage.getItem('hub_tec_salvo')); } catch(e) { return null; }
+        }
+
         // ── LOGIN GESTOR ──────────────────────────────────────────
         async function mostrarLoginGestor() {
             document.getElementById('tech-login-select').classList.add('hidden');
@@ -1214,13 +1242,22 @@ service cloud.firestore {
                     setTimeout(() => document.getElementById('gestor-setup-nome').focus(), 50);
                 } else {
                     document.getElementById('gestor-login-normal').classList.remove('hidden');
-                    document.getElementById('gestor-nome-input').value = '';
-                    document.getElementById('gestor-senha-input').value = '';
                     document.getElementById('gestor-senha-erro').classList.add('hidden');
                     const btn = document.getElementById('btn-entrar-gestor');
                     btn.disabled = false;
                     btn.innerHTML = 'Entrar';
-                    setTimeout(() => document.getElementById('gestor-nome-input').focus(), 50);
+                    const _savedG = _carregarAcessoGestor();
+                    if (_savedG) {
+                        document.getElementById('gestor-nome-input').value  = _savedG.nome;
+                        document.getElementById('gestor-senha-input').value = _savedG.senha;
+                        document.getElementById('gestor-salvar-check').checked = true;
+                        setTimeout(() => document.getElementById('btn-entrar-gestor').focus(), 50);
+                    } else {
+                        document.getElementById('gestor-nome-input').value  = '';
+                        document.getElementById('gestor-senha-input').value = '';
+                        document.getElementById('gestor-salvar-check').checked = false;
+                        setTimeout(() => document.getElementById('gestor-nome-input').focus(), 50);
+                    }
                 }
             } catch(e) {
                 document.getElementById('gestor-login-loading').classList.add('hidden');
@@ -1289,6 +1326,11 @@ service cloud.firestore {
                 const match  = senhas.find(s => s.nome.trim().toLowerCase() === nomeInput && s.senha === senhaInput);
                 if (match) {
                     erroEl.classList.add('hidden');
+                    if (document.getElementById('gestor-salvar-check')?.checked) {
+                        _salvarAcessoGestor(document.getElementById('gestor-nome-input').value.trim(), senhaInput);
+                    } else {
+                        _limparAcessoGestor();
+                    }
                     state.usuarioLogado = { tipo: 'gestor', master: match.master === true, nomeGestor: match.nome };
                     salvarSessao();
                     bootGestor();
@@ -1496,11 +1538,19 @@ service cloud.firestore {
             if (tec.senha) {
                 _tecSelecionadoId = id;
                 document.getElementById('tech-senha-nome').textContent = tec.nome;
-                document.getElementById('tech-senha-input').value = '';
                 document.getElementById('tech-senha-erro').classList.add('hidden');
                 document.getElementById('tech-list-login').classList.add('hidden');
                 document.getElementById('tech-senha-check').classList.remove('hidden');
-                setTimeout(() => document.getElementById('tech-senha-input').focus(), 50);
+                const _savedT = _carregarAcessoTec();
+                if (_savedT && _savedT.id == id) {
+                    document.getElementById('tech-senha-input').value = _savedT.senha;
+                    document.getElementById('tech-salvar-check').checked = true;
+                    setTimeout(() => document.getElementById('tech-senha-input').focus(), 50);
+                } else {
+                    document.getElementById('tech-senha-input').value = '';
+                    document.getElementById('tech-salvar-check').checked = false;
+                    setTimeout(() => document.getElementById('tech-senha-input').focus(), 50);
+                }
             } else {
                 loginTecnico(id);
             }
@@ -1517,6 +1567,11 @@ service cloud.firestore {
             if (!tec) return;
             const input = document.getElementById('tech-senha-input').value;
             if (input === tec.senha) {
+                if (document.getElementById('tech-salvar-check')?.checked) {
+                    _salvarAcessoTec(_tecSelecionadoId, input);
+                } else {
+                    _limparAcessoTec();
+                }
                 document.getElementById('tech-senha-check').classList.add('hidden');
                 loginTecnico(_tecSelecionadoId);
             } else {
